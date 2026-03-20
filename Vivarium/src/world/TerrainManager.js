@@ -8,26 +8,36 @@ export class TerrainManager {
   }
 
   init() {
-    // create simple plane
-    const geometry = new THREE.PlaneGeometry(
-      TERRAIN_CONFIG.SIZE,
-      TERRAIN_CONFIG.SIZE,
-      TERRAIN_CONFIG.SEGMENTS,
-      TERRAIN_CONFIG.SEGMENTS
+    // load grass texture for the ground
+    const texture_loader = new THREE.TextureLoader();
+    const grass_texture = texture_loader.load(TERRAIN_CONFIG.texture_path);
+    grass_texture.wrapS = THREE.RepeatWrapping;
+    grass_texture.wrapT = THREE.RepeatWrapping;
+    grass_texture.repeat.set(
+      TERRAIN_CONFIG.texture_repeat,
+      TERRAIN_CONFIG.texture_repeat
     );
 
-    // create material
+    // create a plane to act as the ground
+    const geometry = new THREE.PlaneGeometry(
+      TERRAIN_CONFIG.size,
+      TERRAIN_CONFIG.size,
+      TERRAIN_CONFIG.segments,
+      TERRAIN_CONFIG.segments
+    );
+
     const material = new THREE.MeshStandardMaterial({
-      color: 0x7cb342,
-      roughness: 0.8,
-      metalness: 0.2
+      map: grass_texture,
+      color: 0x244a27,
+      roughness: 0.9,
+      metalness: 0.0
     });
 
     this.terrain = new THREE.Mesh(geometry, material);
-    this.terrain.rotation.x = -Math.PI / 2; // rotate to flatten
+    this.terrain.rotation.x = -Math.PI / 2;
     this.terrain.receiveShadow = true;
     this.scene.add(this.terrain);
-    console.log('Terrain created');
+    console.log('terrain created');
   }
 
   getTerrain() {

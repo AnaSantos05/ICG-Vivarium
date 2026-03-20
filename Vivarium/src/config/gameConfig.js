@@ -6,12 +6,18 @@ export const CAMERA_CONFIG = {
 };
 
 export const SCENE_CONFIG = {
-  BACKGROUND_COLOR: 0x87CEEB  // sky blue
+  // sky color used for the clear background
+  BACKGROUND_COLOR: 0x87ceeb
 };
 
 export const TERRAIN_CONFIG = {
-  SIZE: 200,
-  SEGMENTS: 100
+  // base size and resolution of the ground
+  size: 200,
+  segments: 100,
+  // how many times the grass texture repeats across the plane
+  texture_repeat: 50,
+  // path to the main grass texture
+  texture_path: './resources/ground/texture.jpg'
 };
 
 export const CAMERA_CONTROL_CONFIG = {
@@ -23,4 +29,29 @@ export const CAMERA_CONTROL_CONFIG = {
   MAX_VERTICAL_ANGLE: Math.PI / 3,
   MOUSE_SENSITIVITY: 0.005,
   ZOOM_SPEED: 2
+};
+
+export const PLAYER_CONFIG = {
+  SCALE: 0.15,
+  MOVE_SPEED: 20,
+  SPRINT_SPEED: 40,
+  ROTATION_SPEED: 3,
+  MODEL_PATH: './resources/fox/',
+  MODEL_FILE: 'Fox.fbx'
+};
+
+export const LIGHT_CONFIG = {
+  // main sun light
+  directional: {
+    color: 0xff8da1,
+    intensity: 3,
+    position: { x: 50, y: 50, z: 50 },
+    shadow_map_size: 2048,
+    shadow_camera_size: 100
+  },
+  // soft fill light for the whole scene
+  ambient: {
+    color: 0xff8da1,
+    intensity: 3
+  }
 };

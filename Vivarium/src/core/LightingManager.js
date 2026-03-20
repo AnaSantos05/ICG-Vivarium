@@ -1,4 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.118.1/build/three.module.js';
+import { LIGHT_CONFIG } from '../config/gameConfig.js';
 
 export class LightingManager {
   constructor(scene) {
@@ -8,23 +9,33 @@ export class LightingManager {
   }
 
   init() {
-    // ambient light
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    this.scene.add(this.ambientLight);
-    console.log('Ambient light added');
-
-    // directional light (sun)
-    this.directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    this.directionalLight.position.set(50, 50, 50);
+    // create a sun like light
+    const dir = LIGHT_CONFIG.directional;
+    this.directionalLight = new THREE.DirectionalLight(
+      dir.color,
+      dir.intensity
+    );
+    this.directionalLight.position.set(
+      dir.position.x,
+      dir.position.y,
+      dir.position.z
+    );
     this.directionalLight.castShadow = true;
-    this.directionalLight.shadow.camera.left = -100;
-    this.directionalLight.shadow.camera.right = 100;
-    this.directionalLight.shadow.camera.top = 100;
-    this.directionalLight.shadow.camera.bottom = -100;
-    this.directionalLight.shadow.mapSize.width = 2048;
-    this.directionalLight.shadow.mapSize.height = 2048;
+    this.directionalLight.shadow.mapSize.width = dir.shadow_map_size;
+    this.directionalLight.shadow.mapSize.height = dir.shadow_map_size;
+    this.directionalLight.shadow.camera.left = -dir.shadow_camera_size;
+    this.directionalLight.shadow.camera.right = dir.shadow_camera_size;
+    this.directionalLight.shadow.camera.top = dir.shadow_camera_size;
+    this.directionalLight.shadow.camera.bottom = -dir.shadow_camera_size;
     this.scene.add(this.directionalLight);
-    console.log('Directional light added');
+
+    // soft light that fills dark areas
+    const amb = LIGHT_CONFIG.ambient;
+    this.ambientLight = new THREE.AmbientLight(
+      amb.color,
+      amb.intensity
+    );
+    this.scene.add(this.ambientLight);
   }
 
   getDirectionalLight() {
