@@ -1,0 +1,11 @@
+Model Information:
+* title:	Quest Marker
+* source:	https://sketchfab.com/3d-models/quest-marker-5acb7e740824474ba133653ee5c5bfc1
+* author:	Rixx (https://sketchfab.com/rixx_vr)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Quest Marker" (https://sketchfab.com/3d-models/quest-marker-5acb7e740824474ba133653ee5c5bfc1) by Rixx (https://sketchfab.com/rixx_vr) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
