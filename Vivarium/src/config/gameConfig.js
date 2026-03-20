@@ -1,0 +1,26 @@
+export const CAMERA_CONFIG = {
+  FOV: 60,
+  NEAR: 1,
+  FAR: 1000,
+  INITIAL_POSITION: { x: 0, y: 5, z: 10 }
+};
+
+export const SCENE_CONFIG = {
+  BACKGROUND_COLOR: 0x87CEEB  // sky blue
+};
+
+export const TERRAIN_CONFIG = {
+  SIZE: 200,
+  SEGMENTS: 100
+};
+
+export const CAMERA_CONTROL_CONFIG = {
+  INITIAL_DISTANCE: 15,
+  INITIAL_HEIGHT: 5,
+  MIN_DISTANCE: 5,
+  MAX_DISTANCE: 50,
+  MIN_VERTICAL_ANGLE: -Math.PI / 3,
+  MAX_VERTICAL_ANGLE: Math.PI / 3,
+  MOUSE_SENSITIVITY: 0.005,
+  ZOOM_SPEED: 2
+};
