@@ -105,7 +105,7 @@ export class PlayerManager {
     this.current_action = next_action;
   }
 
-  update(delta, input_manager) {
+  update(delta, input_manager, vegetation_manager) {
     if (!this.fox || !this.mixer) return;
 
     this.mixer.update(delta);
@@ -124,6 +124,9 @@ export class PlayerManager {
     let is_turning_left = false;
     let is_turning_right = false;
     let is_turning_back = false;
+
+    const old_x = this.fox.position.x;
+    const old_z = this.fox.position.z;
 
     if (input_manager.is_key_pressed('w')) {
       this.fox.position.x += forward.x * speed * delta;
@@ -152,6 +155,12 @@ export class PlayerManager {
       }
     }
 
+    // stop movement if we hit a tree or bush
+    if (vegetation_manager && vegetation_manager.check_collision(this.fox.position.x, this.fox.position.z)) {
+      this.fox.position.x = old_x;
+      this.fox.position.z = old_z;
+    }
+
     if (this.terrain_manager && typeof this.terrain_manager.getTerrainHeight === 'function') {
       this.fox.position.y = this.terrain_manager.getTerrainHeight(
         this.fox.position.x,
@@ -162,7 +171,13 @@ export class PlayerManager {
     }
 
     if (is_moving) {
-      this.fade_to_action('run', 0.1);
+      const is_sprinting_now = is_sprinting;
+      const run_action = this.animations.run;
+      if (run_action) {
+        // speed up animation when sprinting
+        run_action.setEffectiveTimeScale(is_sprinting_now ? 1.8 : 1.0);
+      }
+      this.fade_to_action('run', 0.05);
     } else if (is_turning_left) {
       this.fade_to_action('walk_left', 0.1);
     } else if (is_turning_right) {

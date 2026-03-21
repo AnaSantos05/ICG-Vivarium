@@ -33,8 +33,8 @@ export const CAMERA_CONTROL_CONFIG = {
 
 export const PLAYER_CONFIG = {
   SCALE: 0.15,
-  MOVE_SPEED: 20,
-  SPRINT_SPEED: 40,
+  MOVE_SPEED: 12,
+  SPRINT_SPEED: 36,
   ROTATION_SPEED: 3,
   MODEL_PATH: './resources/fox/',
   MODEL_FILE: 'Fox.fbx'
@@ -54,4 +54,23 @@ export const LIGHT_CONFIG = {
     color: 0xff8da1,
     intensity: 3
   }
+};
+
+export const TREE_CONFIG = {
+  count: 50,
+  scale: 20,
+  path: './resources/ground/trees/fantasy-x-tree-02/',
+  model: 'source/Copilot3D-1dbad8d3-e8ba-405f-b341-6fdbe9aa879f.glb',
+  collision_radius: 2,
+  spawn_area: 180
+};
+
+export const BUSH_CONFIG = {
+  count: 30,
+  min_scale: 0.02,
+  max_scale: 0.03,
+  path: './resources/ground/trees/stylized-bush/source/stylized bush/',
+  model: 'stylized bush.fbx',
+  texture: './resources/ground/trees/stylized-bush/source/stylized bush/9.png',
+  spawn_area: 180
 };

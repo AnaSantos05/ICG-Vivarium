@@ -74,12 +74,13 @@ export class SceneManager {
 
     // check each cullable object
     for (const obj of this.cullableObjects) {
-      if (obj && obj.position) {
-        // create a bounding sphere for the object
-        const boundingSphere = new THREE.Sphere(obj.position, 5);
-        const isVisible = this.frustum.intersectsSphere(boundingSphere);
-        obj.visible = isVisible;
-      }
+      if (!obj || !obj.position) continue;
+
+      // simple bounding sphere culling around the object position
+      // larger radius so objects only disappear when very far
+      const boundingSphere = new THREE.Sphere(obj.position, 60);
+      const isVisible = this.frustum.intersectsSphere(boundingSphere);
+      obj.visible = isVisible;
     }
   }
 

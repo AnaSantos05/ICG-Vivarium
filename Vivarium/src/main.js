@@ -3,6 +3,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.118.1/build/three.m
 import { SceneManager } from './core/SceneManager.js';
 import { LightingManager } from './core/LightingManager.js';
 import { TerrainManager } from './world/TerrainManager.js';
+import { VegetationManager } from './world/VegetationManager.js';
 import { CameraController } from './camera/CameraController.js';
 import { PlayerManager } from './entities/PlayerManager.js';
 import { InputManager } from './input/InputManager.js';
@@ -29,6 +30,10 @@ lightingManager.init();
 const terrainManager = new TerrainManager(scene);
 terrainManager.init();
 
+// add trees and bushes on top of the terrain
+const vegetationManager = new VegetationManager(scene, terrainManager, sceneManager);
+vegetationManager.init();
+
 // initialize input and player
 const inputManager = new InputManager();
 const playerManager = new PlayerManager(scene, terrainManager);
@@ -45,13 +50,13 @@ function animate() {
 
   const delta = Math.min(clock.getDelta(), 0.1);
 
-  playerManager.update(delta, inputManager);
+  playerManager.update(delta, inputManager, vegetationManager);
 
   // update camera (looking at world center)
   const playerPosition = playerManager.get_position();
   const playerRotation = playerManager.get_rotation_y();
   const target = playerPosition || new THREE.Vector3(0, 0, 0);
-  cameraController.update(target, playerRotation, inputManager);
+  cameraController.update(target, playerRotation, inputManager, terrainManager);
 
   // render
   sceneManager.render();

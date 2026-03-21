@@ -26,6 +26,22 @@ export class TerrainManager {
       TERRAIN_CONFIG.segments
     );
 
+    // displace vertices to create a wavy ground
+    const vertices = geometry.vertices;
+    for (let i = 0; i < vertices.length; i++) {
+      const vertex = vertices[i];
+      const world_x = vertex.x;
+      const world_z = vertex.y;
+      const height = Math.sin(world_x * 0.1) * Math.cos(world_z * 0.1) * 2 +
+        Math.sin(world_x * 0.05) * 1.5 +
+        Math.random() * 0.5;
+      vertex.z = height;
+    }
+
+    geometry.verticesNeedUpdate = true;
+    geometry.computeFaceNormals();
+    geometry.computeVertexNormals();
+
     const material = new THREE.MeshStandardMaterial({
       map: grass_texture,
       color: 0x244a27,
@@ -42,5 +58,12 @@ export class TerrainManager {
 
   getTerrain() {
     return this.terrain;
+  }
+
+  getTerrainHeight(x, z) {
+    // use the same formula as the displaced vertices but without randomness
+    const height = Math.sin(x * 0.1) * Math.cos(z * 0.1) * 2 +
+      Math.sin(x * 0.05) * 1.5;
+    return height;
   }
 }
