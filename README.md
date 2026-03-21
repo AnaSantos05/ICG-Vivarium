@@ -94,6 +94,12 @@ then, open the url shown in the terminal (usually http://localhost:5173).
   - arrow keys rotate and tilt the camera around the fox
   - when the fox rotates with `a` / `d` the camera follows his rotation
 
+## Performance / optimizations
+
+- trees and bushes are registered in `scenemanager` for frustum culling
+- objects that are far and fully outside the camera view are hidden
+- hidden objects are not rendered and do not cast shadows, which keeps the scene lighter while you move around the world
+
 ---
 
 # Development log
@@ -127,6 +133,24 @@ c9d4d47 - Resources added
 
 56bc061 - better lighting and texture. Main character and character movements
 
+---
+Short video of the state of the game:
+
+https://github.com/user-attachments/assets/f60f9c20-d4d4-457f-b5f5-0a7c065cfee9
+
+---
+
+### 2026‑03‑21
+
+- made the ground wavy in `terrainmanager`
+- added `vegetationmanager` with trees and bushes scattered on the terrain
+- wired trees and bushes into `scenemanager` frustum culling so far away objects are unloaded
+- tuned camera height so it never goes under the terrain
+- fixed the Shift problem
+
+### Commits
+
+f545930 - added wavy terrain, vegetation and camera tweaks. Optimization and Shift key fix
 
 ---
 Short video of the state of the game:
