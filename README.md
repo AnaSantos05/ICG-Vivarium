@@ -153,9 +153,16 @@ https://github.com/user-attachments/assets/f60f9c20-d4d4-457f-b5f5-0a7c065cfee9
 f545930 - added wavy terrain, vegetation and camera tweaks. Optimization and Shift key fix
 
 ---
-Short video of the state of the game:
+Noticing the optimization - things that the camera cannot see are unloaded:
 
-https://github.com/user-attachments/assets/f60f9c20-d4d4-457f-b5f5-0a7c065cfee9
+https://github.com/user-attachments/assets/f4cb82f4-77cb-48ac-ad08-3967c650881b
+
+---
+
+Short video of the state of the game:
+- I made it so that the unloading radius was bigger so that the unloading for optimization wasn't so noticable
+
+https://github.com/user-attachments/assets/e4d05c88-d464-456b-b648-c915540ed4ec
 
 ---
 
