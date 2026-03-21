@@ -131,12 +131,7 @@ c9d4d47 - Resources added
 ---
 Short video of the state of the game:
 
-<video width="800" height="450" controls>
-  <source src="./Vivarium/docs/20-03-2026.webm" type="video/webm">
-  <source src="./Vivarium/docs/20-03-2026.mp4" type="video/mp4">
-  your browser does not support the video tag.
-</video>
-
+https://github.com/user-attachments/assets/f60f9c20-d4d4-457f-b5f5-0a7c065cfee9
 
 ---
 
