@@ -10,9 +10,11 @@ export class PlayerManager {
     this.mixer = null;
     this.animations = {};
     this.current_action = null;
+    this.on_load_callback = null;
   }
 
-  init() {
+  init(on_load_callback) {
+    this.on_load_callback = on_load_callback || null;
     this.load_fox();
   }
 
@@ -32,6 +34,11 @@ export class PlayerManager {
 
       this.scene.add(this.fox);
       console.log('fox loaded');
+
+      if (this.on_load_callback) {
+        this.on_load_callback();
+        this.on_load_callback = null;
+      }
     });
   }
 

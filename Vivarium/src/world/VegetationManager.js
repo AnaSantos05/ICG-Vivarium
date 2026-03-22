@@ -11,12 +11,26 @@ export class VegetationManager {
     this.trees = [];
     this.bushes = [];
     this.colliders = [];
+    this.on_load_callback = null;
+    this.trees_loaded = 0;
+    this.bushes_loaded = 0;
   }
 
-  init() {
+  init(on_load_callback) {
     // spawn trees and bushes around the world
+    this.on_load_callback = on_load_callback || null;
+    this.trees_loaded = 0;
+    this.bushes_loaded = 0;
     this.load_trees();
     this.load_bushes();
+  }
+
+  check_all_loaded() {
+    // consider vegetation loaded after at least one tree and one bush
+    if (this.trees_loaded >= 1 && this.bushes_loaded >= 1 && this.on_load_callback) {
+      this.on_load_callback();
+      this.on_load_callback = null;
+    }
   }
 
   load_trees() {
@@ -51,6 +65,9 @@ export class VegetationManager {
 
         // simple sphere collider around the tree trunk
         this.colliders.push({ x, z, radius: TREE_CONFIG.collision_radius });
+
+        this.trees_loaded++;
+        this.check_all_loaded();
       });
     }
   }
@@ -97,6 +114,9 @@ export class VegetationManager {
         // use bush size as collision radius
         const radius = scale * 30;
         this.colliders.push({ x, z, radius });
+
+        this.bushes_loaded++;
+        this.check_all_loaded();
       });
     }
   }
