@@ -132,4 +132,38 @@ export class VegetationManager {
     }
     return false;
   }
+
+  // returns the minimum distance from a point to any collider
+  get_min_distance_to_colliders(x, z) {
+    if (this.colliders.length === 0) return Infinity;
+
+    let min = Infinity;
+    for (const col of this.colliders) {
+      const dx = x - col.x;
+      const dz = z - col.z;
+      const dist = Math.sqrt(dx * dx + dz * dz) - col.radius;
+      if (dist < min) {
+        min = dist;
+      }
+    }
+    return min;
+  }
+
+  // tries to find a position around origin that is at least
+  // min_clear_distance away from trees and bushes
+  find_safe_position_around(origin_x, origin_z, min_clear_distance = 15, max_attempts = 40) {
+    for (let i = 0; i < max_attempts; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = min_clear_distance + Math.random() * 10;
+      const x = origin_x + Math.sin(angle) * radius;
+      const z = origin_z + Math.cos(angle) * radius;
+
+      const min_dist = this.get_min_distance_to_colliders(x, z);
+      if (min_dist >= min_clear_distance * 0.8) {
+        return { x, z };
+      }
+    }
+
+    return { x: origin_x, z: origin_z };
+  }
 }

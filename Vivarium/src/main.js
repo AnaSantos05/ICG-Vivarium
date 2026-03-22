@@ -8,6 +8,8 @@ import { CameraController } from './camera/CameraController.js';
 import { PlayerManager } from './entities/PlayerManager.js';
 import { InputManager } from './input/InputManager.js';
 import { LoadingScreen } from './ui/LoadingScreen.js';
+import { CinematicManager } from './core/CinematicManager.js';
+import { IntroScreen } from './ui/IntroScreen.js';
 
 // set body background
 document.body.style.backgroundColor = '#000000';
@@ -17,7 +19,10 @@ document.body.style.overflow = 'hidden';
 
 // loading screen while main assets load
 const loadingScreen = new LoadingScreen();
+const introScreen = new IntroScreen();
 let game_started = false;
+let controls_enabled = false;
+let cinematic_manager = null;
 
 let assets_to_load = 2; // player and vegetation
 let assets_loaded = 0;
@@ -30,8 +35,20 @@ function onAssetLoaded() {
   if (assets_loaded >= assets_to_load) {
     setTimeout(() => {
       loadingScreen.onGameReady(() => {
-        game_started = true;
-        console.log('game start after loading screen');
+        // after loading screen, show intro transition from vivarium-vite
+        introScreen.show(() => {
+          game_started = true;
+          console.log('game start after intro screen');
+
+          if (cinematic_manager) {
+            cinematic_manager.start(() => {
+              controls_enabled = true;
+              console.log('cinematic finished, controls enabled');
+            });
+          } else {
+            controls_enabled = true;
+          }
+        });
       });
     }, 300);
   }
@@ -65,6 +82,9 @@ playerManager.init(onAssetLoaded);
 // initialize camera controller
 const cameraController = new CameraController(camera);
 
+// intro cinematic manager
+cinematic_manager = new CinematicManager(camera, playerManager, vegetationManager, terrainManager);
+
 // animation loop
 const clock = new THREE.Clock();
 
@@ -80,7 +100,16 @@ function animate() {
 
   const delta = Math.min(clock.getDelta(), 0.1);
 
-  playerManager.update(delta, inputManager, vegetationManager);
+  // play intro cinematic before giving control to the player
+  if (cinematic_manager && cinematic_manager.isActive()) {
+    cinematic_manager.update(delta);
+    sceneManager.render();
+    return;
+  }
+
+  if (controls_enabled) {
+    playerManager.update(delta, inputManager, vegetationManager);
+  }
 
   // update camera (looking at world center)
   const playerPosition = playerManager.get_position();

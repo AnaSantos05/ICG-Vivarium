@@ -11,6 +11,10 @@ export class PlayerManager {
     this.animations = {};
     this.current_action = null;
     this.on_load_callback = null;
+    this.model_loaded = false;
+    this.animations_expected = 0;
+    this.animations_loaded = 0;
+    this.assets_ready_notified = false;
   }
 
   init(on_load_callback) {
@@ -34,11 +38,8 @@ export class PlayerManager {
 
       this.scene.add(this.fox);
       console.log('fox loaded');
-
-      if (this.on_load_callback) {
-        this.on_load_callback();
-        this.on_load_callback = null;
-      }
+      this.model_loaded = true;
+      this.maybe_notify_ready();
     });
   }
 
@@ -81,6 +82,9 @@ export class PlayerManager {
       { name: 'walk_right', file: 'Fox_Walk_Right_InPlace.fbx', loop: true }
     ];
 
+    this.animations_expected = animations_to_load.length;
+    this.animations_loaded = 0;
+
     animations_to_load.forEach(({ name, file, loop }) => {
       anim_loader.load(file, (anim) => {
         const action = this.mixer.clipAction(anim.animations[0]);
@@ -89,11 +93,23 @@ export class PlayerManager {
           action.clampWhenFinished = true;
         }
         this.animations[name] = action;
-        if (name === 'idle') {
-          this.fade_to_action('idle', 0);
-        }
+
+         this.animations_loaded++;
+         this.maybe_notify_ready();
       });
     });
+  }
+
+  maybe_notify_ready() {
+    if (!this.on_load_callback || this.assets_ready_notified) {
+      return;
+    }
+
+    if (this.model_loaded && this.animations_loaded === this.animations_expected) {
+      this.assets_ready_notified = true;
+      this.on_load_callback();
+      this.on_load_callback = null;
+    }
   }
 
   fade_to_action(name, duration) {
@@ -199,6 +215,10 @@ export class PlayerManager {
   get_position() {
     if (!this.fox) return null;
     return this.fox.position.clone();
+  }
+
+  get_fox() {
+    return this.fox;
   }
 
   get_rotation_y() {
