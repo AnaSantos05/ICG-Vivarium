@@ -198,4 +198,8 @@ e8e6af8 - loading screen
 ccab796 - I created an intro animation
 e26903f - Initial menu + sounds and music
 
+---
 
+Short video of the state of the game:
+
+https://github.com/user-attachments/assets/b90f58b4-3b88-4018-af7f-148ff2bfe6c8
