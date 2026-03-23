@@ -15,6 +15,13 @@ export class PlayerManager {
     this.animations_expected = 0;
     this.animations_loaded = 0;
     this.assets_ready_notified = false;
+    this.audio_manager = null;
+
+    // Fox sounds (local, like in Vivarium-Vite)
+    this.foxSound = new Audio('./resources/sounds/gameplay/sfx/fox-sound.mp3');
+    this.foxSound.volume = 0.8;
+    this.lastFoxSoundTime = 5;
+    this.foxSoundCooldown = 20; // base cooldown in seconds (will be randomized)
   }
 
   init(on_load_callback) {
@@ -112,6 +119,10 @@ export class PlayerManager {
     }
   }
 
+  attach_audio_manager(audio_manager) {
+    this.audio_manager = audio_manager || null;
+  }
+
   fade_to_action(name, duration) {
     const next_action = this.animations[name];
     if (!next_action) return;
@@ -201,6 +212,23 @@ export class PlayerManager {
         run_action.setEffectiveTimeScale(is_sprinting_now ? 1.8 : 1.0);
       }
       this.fade_to_action('run', 0.05);
+
+      // Fox sound logic similar to Vivarium-Vite: very rare, random
+      const currentTime = Date.now() / 1000;
+      if (currentTime - this.lastFoxSoundTime > this.foxSoundCooldown) {
+        if (Math.random() < 0.05) { // 5% chance when cooldown passed
+          this.foxSound.currentTime = 0;
+          this.foxSound
+            .play()
+            .then(() => console.log('Fox sound played'))
+            .catch((err) => console.warn('Fox sound play failed:', err));
+
+          this.lastFoxSoundTime = currentTime;
+          // next cooldown between 30 and 60 seconds
+          this.foxSoundCooldown = 30 + Math.random() * 30;
+          console.log('Next fox sound cooldown (s):', this.foxSoundCooldown.toFixed(1));
+        }
+      }
     } else if (is_turning_left) {
       this.fade_to_action('walk_left', 0.1);
     } else if (is_turning_right) {
