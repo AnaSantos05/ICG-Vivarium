@@ -6,7 +6,9 @@ I present Vivarium, a cozy RPG featuring a cute fox as the main character. I lov
 for RPGs! Also, I’m very inspired by Spirit of The North game which I’ve played before. Where a fox discovers beautiful
 scenery and has to solve puzzles.​ Vivarium is inspired by it, but different; The fox character has the ability to fight and defeat monsters. Like the most common RPGs, there is a quest system, from the characters the Fox finds along his journey. Those quests involve having to fight some sort of bosses and creatures.
 
-- 3D game prototype for ICG course, built with three.js and vite.
+- 3D game prototype for the ICG course, built with **three.js** and **Vite**.
+
+---
 
 # Requirements
 
@@ -32,38 +34,54 @@ F - Functional Requirements, NF - Non-Functional Requirements
 # Project structure
 
 ```text
-vivarium/
+Vivarium/
+├─ index.html
+├─ package.json
 ├─ public/
 │  └─ resources/
-│     ├─ fox/
-│     ├─ ground/
-│     ├─ bosses/
-│     ├─ quest_givers/
+│     ├─ fox/                   # fox model, animations and VFX
+│     ├─ ground/                # terrain textures
+│     ├─ bosses/                # (future) bosses and enemies
+│     ├─ quest_givers/          # (future) NPC models
 │     └─ sounds/
+│        ├─ intro/              # menu / intro music
+│        ├─ gameplay/           # exploration music
+│        └─ gameplay/sfx/       # ambience, fox sound, footsteps, etc.
 │
-├─ src/
-   ├─ main.js                  # entry point, creates scene, lighting, terrain, player and loop
+└─ src/
+   ├─ main.js                   # entry point and main loop; wires all managers and UI flow
+   ├─ style.css                 # base styles so canvas and overlays fill the window
    │
    ├─ config/
-   │  └─ gameConfig.js         # camera, scene, terrain, light and player config
+   │  └─ gameConfig.js          # camera, scene, terrain, light and player config
    │
    ├─ core/
-   │  ├─ SceneManager.js       # creates three.js scene, camera and renderer
-   │  └─ LightingManager.js    # directional and ambient lights
+   │  ├─ SceneManager.js        # creates three.js scene, camera and renderer
+   │  ├─ LightingManager.js     # directional and ambient lights
+   │  └─ CinematicManager.js    # intro camera/fox cinematic before gameplay
    │
    ├─ world/
-   │  └─ TerrainManager.js     # flat ground plane with grass texture
+   │  ├─ TerrainManager.js      # wavy terrain with grass texture and height queries
+   │  └─ VegetationManager.js   # trees, bushes, colliders and frustum‑culling registration
    │
    ├─ camera/
-   │  └─ CameraController.js   # third person camera around the player
+   │  └─ CameraController.js    # third‑person camera orbiting around the fox
    │
    ├─ entities/
-   │  └─ PlayerManager.js      # fox player model, animations and movement logic
+   │  └─ PlayerManager.js       # fox model, animations, movement, collisions and fox sounds
    │
    ├─ input/
-   │  └─ InputManager.js       # keyboard input (wasd, arrows, shift)
+   │  └─ InputManager.js        # keyboard input (WASD, arrows, Shift)
    │
-   └─ style.css                # simple styles so canvas fills the window
+   ├─ audio/
+   │  └─ AudioManager.js        # menu music, gameplay music and forest ambience
+   │
+   └─ ui/
+      ├─ CreditsIntroScreen.js  # "Game by Ana Santos" intro
+      ├─ PlayScreen.js          # full‑screen PLAY button before heavy loading
+      ├─ MainMenu.js            # Vivarium main menu (New / Load / Quit + credits)
+      ├─ LoadingScreen.js       # 3D fox loading screen with progress
+      └─ IntroScreen.js         # black overlay used as transition into the cinematic
 ```
 
 ---
@@ -77,7 +95,8 @@ npm install
 # start dev server
 npm run dev
 ```
-then, open the url shown in the terminal (usually http://localhost:5173).
+
+Then open the URL shown in the terminal (usually `http://localhost:5173`).
 
 ---
 
@@ -85,10 +104,10 @@ then, open the url shown in the terminal (usually http://localhost:5173).
 
 ## Current controls
 
-- movement
-  - `w` / `s` move the fox forward and backward
-  - `a` / `d` rotate the fox left and right
-  - `shift` holds sprint
+- **Movement**
+  - `W` / `S` – move the fox forward and backward
+  - `A` / `D` – rotate the fox left and right
+  - `Shift` – sprint
 
 - camera
   - arrow keys rotate and tilt the camera around the fox
@@ -96,17 +115,15 @@ then, open the url shown in the terminal (usually http://localhost:5173).
 
 ## Performance / optimizations
 
-- trees and bushes are registered in `scenemanager` for frustum culling
-- objects that are far and fully outside the camera view are hidden
-- hidden objects are not rendered and do not cast shadows, which keeps the scene lighter while you move around the world
+- Trees and bushes are registered in `SceneManager` for frustum culling.
+- Objects that are far outside the camera view are hidden and stop casting shadows.
+- This keeps the scene lighter while moving around the world.
 
 ---
 
-# Development log
+## Development log (summary)
 
-## Implementation
-
-all dates are in yyyy‑mm‑dd format.
+All dates are in `yyyy‑mm‑dd` format.
 
 ### 2026‑03‑20
 
@@ -165,5 +182,20 @@ Short video of the state of the game:
 https://github.com/user-attachments/assets/e4d05c88-d464-456b-b648-c915540ed4ec
 
 ---
+
+### 2026‑03‑22
+
+- Implemented the **LoadingScreen** with the 3D fox floating and a loading bar.
+- Created the **CinematicManager** for the intro where the camera starts on the side and moves behind the fox while she runs.
+- Added the black transition screen (**IntroScreen**) to hide visual pops when the cinematic starts.
+- Recreated the full UI flow: **CreditsIntroScreen** (Author, me) -> **PlayScreen** (PLAY button) → **MainMenu** (New Game / Load Game / Quit + Credits).
+- Implemented the **AudioManager** with menu music, forest gameplay music and ambient forest SFX.
+- Re‑enabled occasional **fox vocalisation sounds** while the fox moves.
+
+### Commits
+
+e8e6af8 - loading screen
+ccab796 - I created an intro animation
+e26903f - Initial menu + sounds and music
 
 

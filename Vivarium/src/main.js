@@ -10,6 +10,10 @@ import { InputManager } from './input/InputManager.js';
 import { LoadingScreen } from './ui/LoadingScreen.js';
 import { CinematicManager } from './core/CinematicManager.js';
 import { IntroScreen } from './ui/IntroScreen.js';
+import { CreditsIntroScreen } from './ui/CreditsIntroScreen.js';
+import { PlayScreen } from './ui/PlayScreen.js';
+import { MainMenu } from './ui/MainMenu.js';
+import { AudioManager } from './audio/AudioManager.js';
 
 // set body background
 document.body.style.backgroundColor = '#000000';
@@ -17,28 +21,55 @@ document.body.style.margin = '0';
 document.body.style.padding = '0';
 document.body.style.overflow = 'hidden';
 
-// loading screen while main assets load
-const loadingScreen = new LoadingScreen();
-const introScreen = new IntroScreen();
+// ui and audio
+const audioManager = new AudioManager();
+audioManager.init();
+
+const creditsIntro = new CreditsIntroScreen();
+const playScreen = new PlayScreen();
+const mainMenu = new MainMenu();
+const introOverlay = new IntroScreen();
+
+// game objects (lazy-initialized after PLAY)
+let loadingScreen = null;
+let sceneManager = null;
+let scene = null;
+let camera = null;
+let renderer = null;
+let lightingManager = null;
+let terrainManager = null;
+let vegetationManager = null;
+let inputManager = null;
+let playerManager = null;
+let cameraController = null;
+let cinematic_manager = null;
+
 let game_started = false;
 let controls_enabled = false;
-let cinematic_manager = null;
 
 let assets_to_load = 2; // player and vegetation
 let assets_loaded = 0;
 
+const clock = new THREE.Clock();
+
 function onAssetLoaded() {
   assets_loaded++;
-  const progress = assets_loaded / assets_to_load;
-  loadingScreen.updateProgress(progress);
 
-  if (assets_loaded >= assets_to_load) {
+  if (loadingScreen) {
+    const progress = assets_loaded / assets_to_load;
+    loadingScreen.updateProgress(progress);
+  }
+
+  if (assets_loaded >= assets_to_load && loadingScreen) {
     setTimeout(() => {
       loadingScreen.onGameReady(() => {
-        // after loading screen, show intro transition from vivarium-vite
-        introScreen.show(() => {
+        // after assets are ready and player presses a key,
+        // fade from loading into the black intro overlay,
+        // then start the cinematic and enable controls
+        introOverlay.show(() => {
           game_started = true;
-          console.log('game start after intro screen');
+          audioManager.startGameplayAmbience();
+          console.log('game start after loading');
 
           if (cinematic_manager) {
             cinematic_manager.start(() => {
@@ -54,42 +85,66 @@ function onAssetLoaded() {
   }
 }
 
-// initialize core systems
-const sceneManager = new SceneManager();
-sceneManager.init();
+function startCoreGame() {
+  // start loading screen and core systems only after PLAY
+  loadingScreen = new LoadingScreen();
+  assets_loaded = 0;
 
-const scene = sceneManager.getScene();
-const camera = sceneManager.getCamera();
-const renderer = sceneManager.getRenderer();
+  sceneManager = new SceneManager();
+  sceneManager.init();
 
-// initialize lighting
-const lightingManager = new LightingManager(scene);
-lightingManager.init();
+  scene = sceneManager.getScene();
+  camera = sceneManager.getCamera();
+  renderer = sceneManager.getRenderer();
 
-// initialize terrain
-const terrainManager = new TerrainManager(scene);
-terrainManager.init();
+  lightingManager = new LightingManager(scene);
+  lightingManager.init();
 
-// add trees and bushes on top of the terrain
-const vegetationManager = new VegetationManager(scene, terrainManager, sceneManager);
-vegetationManager.init(onAssetLoaded);
+  terrainManager = new TerrainManager(scene);
+  terrainManager.init();
 
-// initialize input and player
-const inputManager = new InputManager();
-const playerManager = new PlayerManager(scene, terrainManager);
-playerManager.init(onAssetLoaded);
+  vegetationManager = new VegetationManager(scene, terrainManager, sceneManager);
+  vegetationManager.init(onAssetLoaded);
 
-// initialize camera controller
-const cameraController = new CameraController(camera);
+  inputManager = new InputManager();
+  playerManager = new PlayerManager(scene, terrainManager);
+  playerManager.init(onAssetLoaded);
+  playerManager.attach_audio_manager(audioManager);
 
-// intro cinematic manager
-cinematic_manager = new CinematicManager(camera, playerManager, vegetationManager, terrainManager);
+  cameraController = new CameraController(camera);
 
-// animation loop
-const clock = new THREE.Clock();
+  cinematic_manager = new CinematicManager(camera, playerManager, vegetationManager, terrainManager);
+
+  // small debug helper: allow testing fox sound from console
+  window.debugFoxSound = () => {
+    if (audioManager) {
+      audioManager.playFoxSound();
+    }
+  };
+}
+
+// intro (name) -> PLAY screen -> main menu -> loading/black intro -> animation
+audioManager.playMenuMusic();
+
+creditsIntro.show(() => {
+  // after the name intro, show a simple PLAY screen
+  playScreen.show(() => {
+    // when PLAY is pressed, show the main menu exactly like Vivarium-Vite
+    mainMenu.init();
+    mainMenu.onNewGame = () => {
+      // when New Game is chosen, hide menu, stop menu music and start core game
+      audioManager.stopMenuMusic();
+      startCoreGame();
+    };
+  });
+});
 
 function animate() {
   requestAnimationFrame(animate);
+
+  if (!sceneManager) {
+    return;
+  }
 
   if (!game_started) {
     // while waiting for the player to start the game,
@@ -107,15 +162,17 @@ function animate() {
     return;
   }
 
-  if (controls_enabled) {
+  if (controls_enabled && playerManager && inputManager && vegetationManager) {
     playerManager.update(delta, inputManager, vegetationManager);
   }
 
   // update camera (looking at world center)
-  const playerPosition = playerManager.get_position();
-  const playerRotation = playerManager.get_rotation_y();
+  const playerPosition = playerManager ? playerManager.get_position() : null;
+  const playerRotation = playerManager ? playerManager.get_rotation_y() : 0;
   const target = playerPosition || new THREE.Vector3(0, 0, 0);
-  cameraController.update(target, playerRotation, inputManager, terrainManager);
+  if (cameraController && inputManager && terrainManager) {
+    cameraController.update(target, playerRotation, inputManager, terrainManager);
+  }
 
   // render
   sceneManager.render();
