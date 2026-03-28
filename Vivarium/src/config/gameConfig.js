@@ -1,3 +1,5 @@
+import { texture } from "three/tsl";
+
 export const CAMERA_CONFIG = {
   FOV: 60,
   NEAR: 1,
@@ -56,13 +58,25 @@ export const LIGHT_CONFIG = {
   }
 };
 
-export const TREE_CONFIG = {
+export const TREE2_CONFIG = {
   count: 50,
   scale: 20,
   path: './resources/ground/trees/fantasy-x-tree-02/',
   model: 'source/Copilot3D-1dbad8d3-e8ba-405f-b341-6fdbe9aa879f.glb',
   collision_radius: 2,
-  spawn_area: 180
+  spawn_area: 180,
+  color_multiplier: 1.25
+};
+
+export const TREE_CONFIG = {
+  count: 50,
+  scale: 1,
+  path: './resources/ground/trees/Rita/',
+  model: 'Tree_final.glb',
+  collision_radius: 1.2,
+  spawn_area: 180,
+  position: { y: 0 },
+  color_multiplier: 0.65
 };
 
 export const BUSH_CONFIG = {
