@@ -2,8 +2,10 @@ import './style.css';
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.118.1/build/three.module.js';
 import { SceneManager } from './core/SceneManager.js';
 import { LightingManager } from './core/LightingManager.js';
+import { GameClock } from './core/GameClock.js';
 import { TerrainManager } from './world/TerrainManager.js';
 import { VegetationManager } from './world/VegetationManager.js';
+import { SkyManager } from './world/SkyManager.js';
 import { CameraController } from './camera/CameraController.js';
 import { PlayerManager } from './entities/PlayerManager.js';
 import { InputManager } from './input/InputManager.js';
@@ -39,6 +41,8 @@ let scene = null;
 let camera = null;
 let renderer = null;
 let lightingManager = null;
+let game_clock = null;
+let sky_manager = null;
 let terrainManager = null;
 let vegetationManager = null;
 let inputManager = null;
@@ -111,6 +115,13 @@ function startCoreGame() {
   lightingManager = new LightingManager(scene);
   lightingManager.init();
 
+  // day/night cycle
+  game_clock = new GameClock();
+
+  // sky dome
+  sky_manager = new SkyManager(scene);
+  sky_manager.init();
+
   terrainManager = new TerrainManager(scene);
   terrainManager.init();
 
@@ -158,6 +169,16 @@ function animate() {
     return;
   }
 
+  const delta = Math.min(clock.getDelta(), 0.1);
+
+  // keep day/night running even during menus / cinematic
+  if (game_clock && lightingManager) {
+    game_clock.update(delta);
+    const nightAmount = game_clock.getNightAmount();
+    lightingManager.updateDayNightCycle(nightAmount);
+    if (sky_manager) sky_manager.updateDayNightCycle(nightAmount);
+  }
+
   if (!game_started) {
     // while waiting for the player to start the game,
     // keep rendering a static frame so there is no black screen
@@ -165,11 +186,16 @@ function animate() {
     return;
   }
 
-  const delta = Math.min(clock.getDelta(), 0.1);
-
   // play intro cinematic before giving control to the player
   if (cinematic_manager && cinematic_manager.isActive()) {
     cinematic_manager.update(delta);
+
+    const cinematicPlayerPos = playerManager ? playerManager.get_position() : null;
+    if (cinematicPlayerPos) {
+      if (lightingManager) lightingManager.updatePlayerLight(cinematicPlayerPos);
+      if (sky_manager) sky_manager.update(cinematicPlayerPos);
+    }
+
     sceneManager.render();
     return;
   }
@@ -182,6 +208,11 @@ function animate() {
   const playerPosition = playerManager ? playerManager.get_position() : null;
   const playerRotation = playerManager ? playerManager.get_rotation_y() : 0;
   const target = playerPosition || new THREE.Vector3(0, 0, 0);
+
+  if (playerPosition) {
+    if (lightingManager) lightingManager.updatePlayerLight(playerPosition);
+    if (sky_manager) sky_manager.update(playerPosition);
+  }
 
   if (hudManager && playerPosition) {
     const treeMarkers = vegetationManager ? vegetationManager.get_tree_minimap_markers() : null;

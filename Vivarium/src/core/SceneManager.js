@@ -14,8 +14,9 @@ export class SceneManager {
   init() {
     // create scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(SCENE_CONFIG.BACKGROUND_COLOR);
-    console.log('Scene created');
+    // no scene background so the sky dome can be visible
+    this.scene.background = null;
+    console.log('scene created');
 
     // create camera
     this.camera = new THREE.PerspectiveCamera(
@@ -30,12 +31,13 @@ export class SceneManager {
       CAMERA_CONFIG.INITIAL_POSITION.z
     );
     this.camera.lookAt(0, 0, 0);
-    console.log('Camera positioned');
+    console.log('camera positioned');
 
     // create renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setClearColor(0x87ceeb, 1); // sky blue
+    // transparent clear so body background stays behind
+    this.renderer.setClearColor(0x000000, 0);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -43,7 +45,7 @@ export class SceneManager {
     const container = document.getElementById('app') || document.body;
     container.innerHTML = '';
     container.appendChild(this.renderer.domElement);
-    console.log('Renderer created');
+    console.log('renderer created');
 
     // handle window resize
     this.setupResizeHandler();

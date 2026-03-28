@@ -55,6 +55,12 @@ export const LIGHT_CONFIG = {
   ambient: {
     color: 0xff8da1,
     intensity: 3
+  },
+  // point light that follows the player (mostly noticeable at night)
+  player: {
+    color: 0xffffff,
+    intensity: 1.2,
+    distance: 20
   }
 };
 
