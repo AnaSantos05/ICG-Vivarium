@@ -239,9 +239,6 @@ https://github.com/user-attachments/assets/b90f58b4-3b88-4018-af7f-148ff2bfe6c8
 
 551791a - I modeled a tree in blended, put it there in the game
 
-<<<<<<< HEAD
-4713552 - added day and night feature
-=======
 ---
 
 Me creating the tree model (low poly) in Blender:
@@ -254,5 +251,3 @@ Me creating the tree model (low poly) in Blender:
 Short video of the state of the game:
 
 https://github.com/user-attachments/assets/9053db3e-7fe9-43c7-8bd3-788697718a82
-
->>>>>>> 719c6ece9b50216a00e0d59cb47ffe9f1c2d1f77
