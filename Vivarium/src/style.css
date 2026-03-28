@@ -178,6 +178,11 @@ canvas {
   display: block;
 }
 
+/* Simple in-game HUD layout (map + minimap, bars, backpack, settings) */
+#hud-container img {
+  image-rendering: auto;
+}
+
 #center {
   display: flex;
   flex-direction: column;

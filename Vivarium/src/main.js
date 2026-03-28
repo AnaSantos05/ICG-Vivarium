@@ -14,6 +14,7 @@ import { CreditsIntroScreen } from './ui/CreditsIntroScreen.js';
 import { PlayScreen } from './ui/PlayScreen.js';
 import { MainMenu } from './ui/MainMenu.js';
 import { AudioManager } from './audio/AudioManager.js';
+import { HUDManager } from './ui/HUDManager.js';
 
 // set body background
 document.body.style.backgroundColor = '#000000';
@@ -29,8 +30,9 @@ const creditsIntro = new CreditsIntroScreen();
 const playScreen = new PlayScreen();
 const mainMenu = new MainMenu();
 const introOverlay = new IntroScreen();
+let hudManager = null;
 
-// game objects (lazy-initialized after PLAY)
+// game objects (lazy-initialized after play)
 let loadingScreen = null;
 let sceneManager = null;
 let scene = null;
@@ -75,9 +77,18 @@ function onAssetLoaded() {
             cinematic_manager.start(() => {
               controls_enabled = true;
               console.log('cinematic finished, controls enabled');
+              // only show the hud after the cinematic ends
+              if (!hudManager) {
+                hudManager = new HUDManager();
+                hudManager.init();
+              }
             });
           } else {
             controls_enabled = true;
+            if (!hudManager) {
+              hudManager = new HUDManager();
+              hudManager.init();
+            }
           }
         });
       });
@@ -86,7 +97,7 @@ function onAssetLoaded() {
 }
 
 function startCoreGame() {
-  // start loading screen and core systems only after PLAY
+  // start loading screen and core systems only after play
   loadingScreen = new LoadingScreen();
   assets_loaded = 0;
 
@@ -115,6 +126,7 @@ function startCoreGame() {
 
   cinematic_manager = new CinematicManager(camera, playerManager, vegetationManager, terrainManager);
 
+
   // small debug helper: allow testing fox sound from console
   window.debugFoxSound = () => {
     if (audioManager) {
@@ -123,16 +135,16 @@ function startCoreGame() {
   };
 }
 
-// intro (name) -> PLAY screen -> main menu -> loading/black intro -> animation
+// intro (name) -> play screen -> main menu -> loading/black intro -> animation
 audioManager.playMenuMusic();
 
 creditsIntro.show(() => {
-  // after the name intro, show a simple PLAY screen
+  // after the name intro, show a simple play screen
   playScreen.show(() => {
-    // when PLAY is pressed, show the main menu exactly like Vivarium-Vite
+    // when play is pressed, show the main menu exactly like vivarium-vite
     mainMenu.init();
     mainMenu.onNewGame = () => {
-      // when New Game is chosen, hide menu, stop menu music and start core game
+      // when new game is chosen, hide menu, stop menu music and start core game
       audioManager.stopMenuMusic();
       startCoreGame();
     };
@@ -170,6 +182,11 @@ function animate() {
   const playerPosition = playerManager ? playerManager.get_position() : null;
   const playerRotation = playerManager ? playerManager.get_rotation_y() : 0;
   const target = playerPosition || new THREE.Vector3(0, 0, 0);
+
+  if (hudManager && playerPosition) {
+    const treeMarkers = vegetationManager ? vegetationManager.get_tree_minimap_markers() : null;
+    hudManager.update(playerPosition, treeMarkers);
+  }
   if (cameraController && inputManager && terrainManager) {
     cameraController.update(target, playerRotation, inputManager, terrainManager);
   }
