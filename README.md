@@ -41,8 +41,13 @@ Vivarium/
 │  └─ resources/
 │     ├─ fox/                   # fox model, animations and VFX
 │     ├─ ground/                # terrain textures
+│     │  └─ trees/                # vegetation models (glb/fbx + textures)
+│     │     ├─ Rita/              # custom trees made by me (Tree_final.glb)
+│     │     ├─ fantasy-x-tree-02/ # tree set used as tree variant
+│     │     └─ stylized-bush/     # bush fbx + textures
 │     ├─ bosses/                # (future) bosses and enemies
 │     ├─ quest_givers/          # (future) NPC models
+│     ├─ ui/                    # ui sprites (hud icons, minimap frame, favicon, etc.)
 │     └─ sounds/
 │        ├─ intro/              # menu / intro music
 │        ├─ gameplay/           # exploration music
@@ -77,7 +82,8 @@ Vivarium/
    │  └─ AudioManager.js        # menu music, gameplay music and forest ambience
    │
    └─ ui/
-      ├─ CreditsIntroScreen.js  # "Game by Ana Santos" intro
+      ├─ CreditsIntroScreen.js  # lil intro
+      ├─ HUDManager.js          # in-game hud (minimap, backpack, bars, settings)
       ├─ PlayScreen.js          # full‑screen PLAY button before heavy loading
       ├─ MainMenu.js            # Vivarium main menu (New / Load / Quit + credits)
       ├─ LoadingScreen.js       # 3D fox loading screen with progress
@@ -203,3 +209,24 @@ e26903f - Initial menu + sounds and music
 Short video of the state of the game:
 
 https://github.com/user-attachments/assets/b90f58b4-3b88-4018-af7f-148ff2bfe6c8
+
+---
+
+### 2026‑03‑28
+
+- added the in-game hud (minimap frame + minimap canvas, backpack button, health/stamina bars, settings icon)
+- updated the minimap so the player stays centered and the world scrolls around them
+- replaced the minimap player dot with the fox icon (`public/resources/ui/fox_icon.svg`)
+- hide the hud during the intro cinematic and only show it after the cinematic ends
+- added my custom tree model `public/resources/ground/trees/Rita/Tree_final.glb` and wired it as `TREE_CONFIG`
+- fixed a crash caused by loading the same tree model many times by loading once and cloning for instances
+- spawn two tree variants (`TREE_CONFIG` + `TREE2_CONFIG`) with spacing, and drive minimap tree markers from real colliders
+
+### Commits
+
+74ed02a - removed old stuff
+
+48b5702 - map in ui
+
+551791a - I modeled a tree in blended, put it there in the game
+
