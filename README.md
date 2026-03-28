@@ -41,6 +41,7 @@ Vivarium/
 │  └─ resources/
 │     ├─ fox/                   # fox model, animations and VFX
 │     ├─ ground/                # terrain textures
+│     │  └─ sky/                  # day/night sky textures
 │     │  └─ trees/                # vegetation models (glb/fbx + textures)
 │     │     ├─ Rita/              # custom trees made by me (Tree_final.glb)
 │     │     ├─ fantasy-x-tree-02/ # tree set used as tree variant
@@ -61,11 +62,13 @@ Vivarium/
    │  └─ gameConfig.js          # camera, scene, terrain, light and player config
    │
    ├─ core/
+   │  ├─ GameClock.js           # timekeeping used by the day/night cycle
    │  ├─ SceneManager.js        # creates three.js scene, camera and renderer
    │  ├─ LightingManager.js     # directional and ambient lights
    │  └─ CinematicManager.js    # intro camera/fox cinematic before gameplay
    │
    ├─ world/
+   │  ├─ SkyManager.js          # sky dome + day/night sky swapping
    │  ├─ TerrainManager.js      # wavy terrain with grass texture and height queries
    │  └─ VegetationManager.js   # trees, bushes, colliders and frustum‑culling registration
    │
@@ -222,6 +225,12 @@ https://github.com/user-attachments/assets/b90f58b4-3b88-4018-af7f-148ff2bfe6c8
 - fixed a crash caused by loading the same tree model many times by loading once and cloning for instances
 - spawn two tree variants (`TREE_CONFIG` + `TREE2_CONFIG`) with spacing, and drive minimap tree markers from real colliders
 
+- added a day/night cycle system:
+  - created `src/core/GameClock.js` (10 min full cycle) with smooth `getNightAmount()` blending
+  - created `src/world/SkyManager.js` sky dome that swaps day/night textures and follows the player
+  - updated `src/core/LightingManager.js` to lerp sun/ambient/player lights into moonlight at night
+  - wired the update in `src/main.js` so the cycle runs during menus, cinematic, and gameplay
+
 ### Commits
 
 74ed02a - removed old stuff
@@ -230,3 +239,4 @@ https://github.com/user-attachments/assets/b90f58b4-3b88-4018-af7f-148ff2bfe6c8
 
 551791a - I modeled a tree in blended, put it there in the game
 
+4713552 - added day and night feature
