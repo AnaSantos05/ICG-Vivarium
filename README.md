@@ -160,9 +160,14 @@ c9d4d47 - Resources added
 56bc061 - better lighting and texture. Main character and character movements
 
 ---
+Image from the very beginning of the game:
+
+<img width="1920" height="1080" alt="Screenshot from 2026-03-20 20-52-28" src="https://github.com/user-attachments/assets/3efacfa0-c8f6-4f52-87bf-533d4a400e71" />
+
+---
 Short video of the state of the game:
 
-https://github.com/user-attachments/assets/f60f9c20-d4d4-457f-b5f5-0a7c065cfee9
+https://github.com/user-attachments/assets/7fd9c0f2-5bc0-4a00-8c90-22840a783dbb
 
 ---
 
@@ -181,14 +186,14 @@ f545930 - added wavy terrain, vegetation and camera tweaks. Optimization and Shi
 ---
 Noticing the optimization - things that the camera cannot see are unloaded:
 
-https://github.com/user-attachments/assets/f4cb82f4-77cb-48ac-ad08-3967c650881b
+https://github.com/user-attachments/assets/0603efb1-4f04-4ca9-89c2-b2958c2db43e
 
 ---
 
 Short video of the state of the game:
 - I made it so that the unloading radius was bigger so that the unloading for optimization wasn't so noticable
 
-https://github.com/user-attachments/assets/e4d05c88-d464-456b-b648-c915540ed4ec
+https://github.com/user-attachments/assets/9aee8ee3-68d3-4460-b26f-8b510c325b0a
 
 ---
 
@@ -211,7 +216,7 @@ e26903f - Initial menu + sounds and music
 
 Short video of the state of the game:
 
-https://github.com/user-attachments/assets/b90f58b4-3b88-4018-af7f-148ff2bfe6c8
+https://github.com/user-attachments/assets/0cd6c628-737b-4b81-8e1d-0b7f1dedc1a8
 
 ---
 
@@ -233,21 +238,32 @@ https://github.com/user-attachments/assets/b90f58b4-3b88-4018-af7f-148ff2bfe6c8
 
 ### Commits
 
+4713552 - added day and night feature
+
 74ed02a - removed old stuff
 
 48b5702 - map in ui
 
 551791a - I modeled a tree in blended, put it there in the game
 
+
 ---
 
 Me creating the tree model (low poly) in Blender:
 
-<img width="1920" height="1080" alt="Screenshot from 2026-03-27 14-47-55" src="https://github.com/user-attachments/assets/8726f532-a1f6-47e4-ba05-b162471903aa" />
-<img width="1920" height="1080" alt="Screenshot from 2026-03-27 14-50-41" src="https://github.com/user-attachments/assets/99b16eeb-80f9-4020-abaa-774dbbc3fbc8" />
+<img width="1920" height="1080" alt="Screenshot from 2026-03-27 14-47-55" src="https://github.com/user-attachments/assets/b3c9d396-31c8-4028-ba15-9a819966201a" />
+<img width="1920" height="1080" alt="Screenshot from 2026-03-27 14-50-41" src="https://github.com/user-attachments/assets/3da0c462-724b-4394-8762-80083537865a" />
 
 ---
 
 Short video of the state of the game:
 
-https://github.com/user-attachments/assets/9053db3e-7fe9-43c7-8bd3-788697718a82
+https://github.com/user-attachments/assets/e6faa199-a633-4ade-b479-858c7490a725
+
+---
+
+Day/Night feature:
+
+<img width="1920" height="1080" alt="Screenshot from 2026-03-28 18-20-55" src="https://github.com/user-attachments/assets/ebdeaf5a-8066-4b13-ac9b-2948e07b52e6" />
+<img width="1920" height="1080" alt="Screenshot from 2026-03-28 18-34-13" src="https://github.com/user-attachments/assets/03da57eb-0b3a-49e3-96aa-6e20685ade08" />
+
