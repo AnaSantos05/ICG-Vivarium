@@ -16,6 +16,14 @@ export class VegetationManager {
     this.on_load_callback = null;
     this.trees_loaded = 0;
     this.bushes_loaded = 0;
+
+    // exclusion zones (arena + player spawn)
+    this.arena_zone = null;
+    this.spawn_zone = { x: 0, z: 0, radius: 25 };
+  }
+
+  setArenaZone(x, z, radius) {
+    this.arena_zone = { x, z, radius };
   }
 
   init(on_load_callback) {
@@ -73,6 +81,23 @@ export class VegetationManager {
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         const x = (Math.random() - 0.5) * spawnArea;
         const z = (Math.random() - 0.5) * spawnArea;
+
+        // keep arena clear
+        if (this.arena_zone) {
+          const dx = x - this.arena_zone.x;
+          const dz = z - this.arena_zone.z;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist <= this.arena_zone.radius + 10) continue;
+        }
+
+        // keep spawn area clear
+        if (this.spawn_zone) {
+          const dx = x - this.spawn_zone.x;
+          const dz = z - this.spawn_zone.z;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+          if (dist <= this.spawn_zone.radius) continue;
+        }
+
         if (!isTooClose(x, z, radius)) return { x, z };
       }
       return { x: (Math.random() - 0.5) * spawnArea, z: (Math.random() - 0.5) * spawnArea };
@@ -173,8 +198,28 @@ export class VegetationManager {
         const scale = BUSH_CONFIG.min_scale + Math.random() * (BUSH_CONFIG.max_scale - BUSH_CONFIG.min_scale);
         fbx.scale.setScalar(scale);
 
-        const x = (Math.random() - 0.5) * BUSH_CONFIG.spawn_area;
-        const z = (Math.random() - 0.5) * BUSH_CONFIG.spawn_area;
+        let x = 0;
+        let z = 0;
+        for (let attempt = 0; attempt < 60; attempt++) {
+          x = (Math.random() - 0.5) * BUSH_CONFIG.spawn_area;
+          z = (Math.random() - 0.5) * BUSH_CONFIG.spawn_area;
+
+          if (this.arena_zone) {
+            const dx = x - this.arena_zone.x;
+            const dz = z - this.arena_zone.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist <= this.arena_zone.radius + 10) continue;
+          }
+
+          if (this.spawn_zone) {
+            const dx = x - this.spawn_zone.x;
+            const dz = z - this.spawn_zone.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
+            if (dist <= this.spawn_zone.radius) continue;
+          }
+
+          break;
+        }
         const y = this.terrain_manager.getTerrainHeight(x, z);
 
         fbx.position.set(x, y, z);

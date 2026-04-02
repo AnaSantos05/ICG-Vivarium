@@ -5,6 +5,11 @@ export class TerrainManager {
   constructor(scene) {
     this.scene = scene;
     this.terrain = null;
+    this.flatZone = null;
+  }
+
+  setFlatZone(x, z, radius) {
+    this.flatZone = { x, z, radius };
   }
 
   init() {
@@ -28,14 +33,25 @@ export class TerrainManager {
 
     // displace vertices to create a wavy ground
     const vertices = geometry.vertices;
+    const arenaCenter = this.flatZone || { x: 0, z: 0, radius: 0 };
     for (let i = 0; i < vertices.length; i++) {
       const vertex = vertices[i];
       const world_x = vertex.x;
       const world_z = vertex.y;
-      const height = Math.sin(world_x * 0.1) * Math.cos(world_z * 0.1) * 2 +
-        Math.sin(world_x * 0.05) * 1.5 +
-        Math.random() * 0.5;
-      vertex.z = height;
+
+      const dx = world_x - arenaCenter.x;
+      const dz = world_z + arenaCenter.z;
+      const distanceToArena = Math.sqrt(dx * dx + dz * dz);
+
+      if (distanceToArena < arenaCenter.radius) {
+        // keep the arena area flat
+        vertex.z = 1.5;
+      } else {
+        const height = Math.sin(world_x * 0.1) * Math.cos(world_z * 0.1) * 2 +
+          Math.sin(world_x * 0.05) * 1.5 +
+          Math.random() * 0.5;
+        vertex.z = height;
+      }
     }
 
     geometry.verticesNeedUpdate = true;
@@ -46,7 +62,50 @@ export class TerrainManager {
       map: grass_texture,
       color: 0x244a27,
       roughness: 0.9,
-      metalness: 0.0
+      metalness: 0.0,
+      side: THREE.DoubleSide,
+      // shader patch: discard terrain fragments under the arena mesh
+      onBeforeCompile: (shader) => {
+        shader.uniforms.arenaCenter = { value: new THREE.Vector2(arenaCenter.x, arenaCenter.z) };
+        shader.uniforms.arenaRadius = { value: arenaCenter.radius };
+
+        shader.vertexShader = shader.vertexShader.replace(
+          '#include <common>',
+          `
+          #include <common>
+          varying vec3 vWorldPos;
+          `
+        );
+
+        shader.vertexShader = shader.vertexShader.replace(
+          '#include <worldpos_vertex>',
+          `
+          #include <worldpos_vertex>
+          vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+          `
+        );
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <common>',
+          `
+          #include <common>
+          uniform vec2 arenaCenter;
+          uniform float arenaRadius;
+          varying vec3 vWorldPos;
+          `
+        );
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <dithering_fragment>',
+          `
+          #include <dithering_fragment>
+          float distToArena = length(vec2(vWorldPos.x, vWorldPos.z) - arenaCenter);
+          if (distToArena < arenaRadius - 0.5) {
+            discard;
+          }
+          `
+        );
+      }
     });
 
     this.terrain = new THREE.Mesh(geometry, material);
@@ -61,6 +120,16 @@ export class TerrainManager {
   }
 
   getTerrainHeight(x, z) {
+    if (this.flatZone) {
+      const dx = x - this.flatZone.x;
+      const dz = z - this.flatZone.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+
+      if (distance < this.flatZone.radius) {
+        return 0.2;
+      }
+    }
+
     // use the same formula as the displaced vertices but without randomness
     const height = Math.sin(x * 0.1) * Math.cos(z * 0.1) * 2 +
       Math.sin(x * 0.05) * 1.5;

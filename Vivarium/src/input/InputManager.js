@@ -6,13 +6,18 @@ export class InputManager {
       s: false,
       d: false,
       shift: false,
+      q: false,
+      r: false,
       arrowup: false,
       arrowdown: false,
       arrowleft: false,
       arrowright: false
     };
 
-    this.keyJustPressed = {};
+    this.keyJustPressed = {
+      q: false,
+      r: false
+    };
 
     this.arrow_key_speed = 0.04;
 
@@ -27,6 +32,10 @@ export class InputManager {
   handle_key_down(e) {
     const key = e.key.toLowerCase();
     if (key in this.keys) {
+      // single-action keys (q/r)
+      if (!this.keys[key] && key in this.keyJustPressed) {
+        this.keyJustPressed[key] = true;
+      }
       this.keys[key] = true;
     }
     if (key === 'shift') {
@@ -46,6 +55,15 @@ export class InputManager {
 
   is_key_pressed(key) {
     return this.keys[key] || false;
+  }
+
+  // returns true once per key press
+  was_key_just_pressed(key) {
+    if (this.keyJustPressed[key]) {
+      this.keyJustPressed[key] = false;
+      return true;
+    }
+    return false;
   }
 
   is_moving() {

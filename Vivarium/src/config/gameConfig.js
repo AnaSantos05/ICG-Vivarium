@@ -1,5 +1,3 @@
-import { texture } from "three/tsl";
-
 export const CAMERA_CONFIG = {
   FOV: 60,
   NEAR: 1,
@@ -93,4 +91,27 @@ export const BUSH_CONFIG = {
   model: 'stylized bush.fbx',
   texture: './resources/ground/trees/stylized-bush/source/stylized bush/9.png',
   spawn_area: 180
+};
+
+export const ARENA_CONFIG = {
+  center: { x: -60, z: -60 },
+  radius: 35,
+  wake_radius: 40,
+  // used by `TerrainManager` to keep the arena zone flat
+  flat_zone_radius: 35,
+  // used by `VegetationManager` to keep the area clear
+  vegetation_clearance: 10
+};
+
+export const COMBAT_CONFIG = {
+  q_cooldown: 1.2,
+  r_cooldown: 1.0,
+  // r locks to the boss only if the boss is close enough
+  r_lock_radius: 40,
+  // projectile
+  r_projectile_speed: 45,
+  r_projectile_lifetime: 1.25,
+  // vfx
+  shockwave_lifetime: 0.55,
+  claw_arc_lifetime: 0.35
 };

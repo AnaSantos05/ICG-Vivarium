@@ -1,6 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.118.1/build/three.module.js';
 import { FBXLoader } from 'https://cdn.jsdelivr.net/npm/three@0.118.1/examples/jsm/loaders/FBXLoader.js';
 import { PLAYER_CONFIG } from '../config/gameConfig.js';
+import { CombatEngine } from '../core/CombatEngine.js';
 
 export class PlayerManager {
   constructor(scene, terrain_manager) {
@@ -17,7 +18,10 @@ export class PlayerManager {
     this.assets_ready_notified = false;
     this.audio_manager = null;
 
-    // Fox sounds (local, like in Vivarium-Vite)
+    // combat engine (q/r powers + vfx)
+    this.combat_engine = new CombatEngine(this.scene);
+
+    // fox sounds (local)
     this.foxSound = new Audio('./resources/sounds/gameplay/sfx/fox-sound.mp3');
     this.foxSound.volume = 0.8;
     this.lastFoxSoundTime = 5;
@@ -75,6 +79,33 @@ export class PlayerManager {
 
   setup_mixer() {
     this.mixer = new THREE.AnimationMixer(this.fox);
+
+    // handle attack animation end
+    this.mixer.addEventListener('finished', (e) => {
+      this.on_animation_finished(e);
+    });
+
+    // bind combat engine as soon as we have a player object + mixer
+    if (this.combat_engine) {
+      this.combat_engine.bind_player({
+        player: this.fox,
+        animations: this.animations,
+        get_current_action: () => this.current_action,
+        set_current_action: (a) => {
+          this.current_action = a;
+        },
+        fade_to_action: (name, duration) => this.fade_to_action(name, duration)
+      });
+    }
+  }
+
+  on_animation_finished(e) {
+    if (!e || !e.action) return;
+
+    // when an attack ends, unlock controls
+    if (this.combat_engine) {
+      this.combat_engine.on_animation_finished(e);
+    }
   }
 
   load_animations() {
@@ -86,7 +117,11 @@ export class PlayerManager {
       { name: 'run', file: 'Fox_Run_InPlace.fbx', loop: true },
       { name: 'back', file: 'Fox_Walk_Back_InPlace.fbx', loop: true },
       { name: 'walk_left', file: 'Fox_Walk_Left_InPlace.fbx', loop: true },
-      { name: 'walk_right', file: 'Fox_Walk_Right_InPlace.fbx', loop: true }
+      { name: 'walk_right', file: 'Fox_Walk_Right_InPlace.fbx', loop: true },
+
+      // combat animations
+      { name: 'attack_tail', file: 'Fox_Attack_Tail.fbx', loop: false },
+      { name: 'attack_paws', file: 'Fox_Attack_Paws.fbx', loop: false }
     ];
 
     this.animations_expected = animations_to_load.length;
@@ -139,10 +174,25 @@ export class PlayerManager {
     this.current_action = next_action;
   }
 
-  update(delta, input_manager, vegetation_manager) {
+  update(delta, input_manager, vegetation_manager, boss_manager) {
     if (!this.fox || !this.mixer) return;
 
     this.mixer.update(delta);
+
+    // q/r powers (attacks) + vfx
+    if (this.combat_engine) {
+      this.combat_engine.update(delta, input_manager, boss_manager);
+    }
+
+    // lock movement while attacking
+    if (this.combat_engine && this.combat_engine.is_locked()) {
+      if (this.terrain_manager && typeof this.terrain_manager.getTerrainHeight === 'function') {
+        this.fox.position.y = this.terrain_manager.getTerrainHeight(this.fox.position.x, this.fox.position.z);
+      } else {
+        this.fox.position.y = 0;
+      }
+      return;
+    }
 
     const forward = new THREE.Vector3(
       Math.sin(this.fox.rotation.y),
@@ -213,7 +263,7 @@ export class PlayerManager {
       }
       this.fade_to_action('run', 0.05);
 
-      // Fox sound logic similar to Vivarium-Vite: very rare, random
+      // fox sound logic: very rare, random
       const currentTime = Date.now() / 1000;
       if (currentTime - this.lastFoxSoundTime > this.foxSoundCooldown) {
         if (Math.random() < 0.05) { // 5% chance when cooldown passed

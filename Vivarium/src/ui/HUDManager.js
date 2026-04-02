@@ -18,6 +18,14 @@ export class HUDManager {
     this.foxIcon.onload = () => {
       this.foxIconLoaded = true;
     };
+
+    // boss icon for the minimap
+    this.bossSkullIcon = new Image();
+    this.bossSkullIconLoaded = false;
+    this.bossSkullIcon.src = './resources/ui/skull-red-icon.png';
+    this.bossSkullIcon.onload = () => {
+      this.bossSkullIconLoaded = true;
+    };
   }
 
   init() {
@@ -241,8 +249,8 @@ export class HUDManager {
     this.staminaFill.style.width = `${clamped * 100}%`;
   }
 
-  // updates the minimap: tree markers + player icon.
-  update(playerPosition, treeMarkers) {
+  // updates the minimap: tree markers + boss marker + player icon.
+  update(playerPosition, treeMarkers, bossPosition = null, isBossInRange = false) {
     if (!this.minimapCanvas || !this.minimapContext || !playerPosition) return;
 
     if (Array.isArray(treeMarkers)) {
@@ -279,6 +287,49 @@ export class HUDManager {
     ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.lineWidth = 4;
     ctx.strokeRect(2, 2, w - 4, h - 4);
+
+    // boss marker
+    if (bossPosition && typeof bossPosition.x === 'number' && typeof bossPosition.z === 'number') {
+      const relX = (bossPosition.x - playerPosition.x) * this.minimapScale;
+      const relZ = (bossPosition.z - playerPosition.z) * this.minimapScale;
+
+      // clamp to minimap rectangle so the marker can reach the corners
+      // (the old circular clamp never touches the corners)
+      const edge_pad = 12;
+      const maxX = w / 2 - edge_pad;
+      const maxY = h / 2 - edge_pad;
+
+      let bx = centerX + relX;
+      let by = centerY + relZ;
+
+      const absX = Math.abs(relX);
+      const absY = Math.abs(relZ);
+      const is_offscreen = absX > maxX || absY > maxY;
+      if (is_offscreen) {
+        const sx = absX > 0.0001 ? maxX / absX : 1;
+        const sy = absY > 0.0001 ? maxY / absY : 1;
+        const s = Math.min(sx, sy);
+        bx = centerX + relX * s;
+        by = centerY + relZ * s;
+      }
+
+      // show skull as soon as the boss enters the minimap view area
+      // keep the dot only when the boss is offscreen (clamped)
+      if (!is_offscreen && this.bossSkullIconLoaded) {
+        const size = 18;
+        ctx.drawImage(this.bossSkullIcon, bx - size / 2, by - size / 2, size, size);
+      } else {
+        // offscreen (or icon not loaded): red dot
+        ctx.fillStyle = '#ff2b2b';
+        ctx.beginPath();
+        ctx.arc(bx, by, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
 
     // player icon (fox) fixed at the center
     const iconSize = 22;

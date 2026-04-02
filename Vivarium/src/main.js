@@ -6,8 +6,10 @@ import { GameClock } from './core/GameClock.js';
 import { TerrainManager } from './world/TerrainManager.js';
 import { VegetationManager } from './world/VegetationManager.js';
 import { SkyManager } from './world/SkyManager.js';
+import { ArenaManager } from './world/ArenaManager.js';
 import { CameraController } from './camera/CameraController.js';
 import { PlayerManager } from './entities/PlayerManager.js';
+import { BossManager } from './entities/BossManager.js';
 import { InputManager } from './input/InputManager.js';
 import { LoadingScreen } from './ui/LoadingScreen.js';
 import { CinematicManager } from './core/CinematicManager.js';
@@ -17,6 +19,8 @@ import { PlayScreen } from './ui/PlayScreen.js';
 import { MainMenu } from './ui/MainMenu.js';
 import { AudioManager } from './audio/AudioManager.js';
 import { HUDManager } from './ui/HUDManager.js';
+import { BossUIManager } from './ui/BossUIManager.js';
+import { ARENA_CONFIG } from './config/gameConfig.js';
 
 // set body background
 document.body.style.backgroundColor = '#000000';
@@ -45,15 +49,21 @@ let game_clock = null;
 let sky_manager = null;
 let terrainManager = null;
 let vegetationManager = null;
+let arenaManager = null;
 let inputManager = null;
 let playerManager = null;
+let bossManager = null;
 let cameraController = null;
 let cinematic_manager = null;
+let bossUIManager = null;
+
+// shared arena info for ui/music triggers
+let arena_zone = null;
 
 let game_started = false;
 let controls_enabled = false;
 
-let assets_to_load = 2; // player and vegetation
+let assets_to_load = 3; // player, vegetation, boss
 let assets_loaded = 0;
 
 const clock = new THREE.Clock();
@@ -123,9 +133,27 @@ function startCoreGame() {
   sky_manager.init();
 
   terrainManager = new TerrainManager(scene);
+  // arena configuration
+  const arenaX = ARENA_CONFIG.center.x;
+  const arenaZ = ARENA_CONFIG.center.z;
+  const arenaRadius = ARENA_CONFIG.radius;
+  const arenaWakeRadius = ARENA_CONFIG.wake_radius;
+
+  arena_zone = {
+    x: arenaX,
+    z: arenaZ,
+    radius: arenaRadius,
+    wake_radius: arenaWakeRadius
+  };
+
+  terrainManager.setFlatZone(arenaX, arenaZ, arenaRadius);
   terrainManager.init();
 
+  arenaManager = new ArenaManager(scene);
+  arenaManager.init(arenaX, arenaZ, 0);
+
   vegetationManager = new VegetationManager(scene, terrainManager, sceneManager);
+  vegetationManager.setArenaZone(arenaX, arenaZ, arenaRadius);
   vegetationManager.init(onAssetLoaded);
 
   inputManager = new InputManager();
@@ -133,9 +161,22 @@ function startCoreGame() {
   playerManager.init(onAssetLoaded);
   playerManager.attach_audio_manager(audioManager);
 
+  bossManager = new BossManager(scene, terrainManager, vegetationManager);
+  bossManager.setArenaCenter(arenaX, arenaZ);
+  bossManager.init(onAssetLoaded);
+
+  bossUIManager = new BossUIManager();
+
   cameraController = new CameraController(camera);
 
   cinematic_manager = new CinematicManager(camera, playerManager, vegetationManager, terrainManager);
+
+  // register arena bushes for culling once they have had time to load
+  setTimeout(() => {
+    if (sceneManager && arenaManager && Array.isArray(arenaManager.bushes)) {
+      sceneManager.registerCullableObjects(arenaManager.bushes);
+    }
+  }, 4000);
 
 
   // small debug helper: allow testing fox sound from console
@@ -152,7 +193,7 @@ audioManager.playMenuMusic();
 creditsIntro.show(() => {
   // after the name intro, show a simple play screen
   playScreen.show(() => {
-    // when play is pressed, show the main menu exactly like vivarium-vite
+    // when play is pressed, show the main menu
     mainMenu.init();
     mainMenu.onNewGame = () => {
       // when new game is chosen, hide menu, stop menu music and start core game
@@ -201,7 +242,7 @@ function animate() {
   }
 
   if (controls_enabled && playerManager && inputManager && vegetationManager) {
-    playerManager.update(delta, inputManager, vegetationManager);
+    playerManager.update(delta, inputManager, vegetationManager, bossManager);
   }
 
   // update camera (looking at world center)
@@ -214,9 +255,43 @@ function animate() {
     if (sky_manager) sky_manager.update(playerPosition);
   }
 
+  // boss logic (wake/attack) + simple proximity ui
+  if (bossManager && playerPosition) {
+    bossManager.update(delta, playerPosition);
+
+    // player-in-arena check is used for ui + music
+    let isInArena = false;
+    if (arena_zone) {
+      const dx = playerPosition.x - arena_zone.x;
+      const dz = playerPosition.z - arena_zone.z;
+      isInArena = Math.sqrt(dx * dx + dz * dz) < arena_zone.wake_radius;
+    }
+
+    const bossLoaded = !!bossManager.getBoss();
+
+    // battle music follows being inside the arena ring
+    if (audioManager && typeof audioManager.updateBossMusic === 'function') {
+      audioManager.updateBossMusic(isInArena && bossLoaded);
+    }
+
+    // show boss name/ui while the fox is inside the arena
+    if (bossUIManager) bossUIManager.update(isInArena && bossLoaded);
+  }
+
   if (hudManager && playerPosition) {
     const treeMarkers = vegetationManager ? vegetationManager.get_tree_minimap_markers() : null;
-    hudManager.update(playerPosition, treeMarkers);
+    const bossPos = bossManager ? bossManager.getPosition() : null;
+
+    // reuse the arena logic: skull in range, dot out of range
+    let isInArena = false;
+    if (arena_zone) {
+      const dx = playerPosition.x - arena_zone.x;
+      const dz = playerPosition.z - arena_zone.z;
+      isInArena = Math.sqrt(dx * dx + dz * dz) < arena_zone.wake_radius;
+    }
+
+    const bossLoaded = bossManager ? !!bossManager.getBoss() : false;
+    hudManager.update(playerPosition, treeMarkers, bossPos, isInArena && bossLoaded);
   }
   if (cameraController && inputManager && terrainManager) {
     cameraController.update(target, playerRotation, inputManager, terrainManager);
