@@ -52,7 +52,7 @@ export const LIGHT_CONFIG = {
   // soft fill light for the whole scene
   ambient: {
     color: 0xff8da1,
-    intensity: 3
+    intensity: 1
   },
   // point light that follows the player (mostly noticeable at night)
   player: {
@@ -97,9 +97,9 @@ export const ARENA_CONFIG = {
   center: { x: -60, z: -60 },
   radius: 35,
   wake_radius: 40,
-  // used by `TerrainManager` to keep the arena zone flat
+  // used by `terrainmanager` to keep the arena zone flat
   flat_zone_radius: 35,
-  // used by `VegetationManager` to keep the area clear
+  // used by `vegetationmanager` to keep the area clear
   vegetation_clearance: 10
 };
 
@@ -114,4 +114,62 @@ export const COMBAT_CONFIG = {
   // vfx
   shockwave_lifetime: 0.55,
   claw_arc_lifetime: 0.35
+};
+
+export const FROG_CONFIG = {
+  // model
+  path: './resources/quest_givers/cartoon-frog/',
+  model: 'source/test03.fbx',
+  texture: './resources/quest_givers/cartoon-frog/textures/all_texture02.png',
+  ao_texture: './resources/quest_givers/cartoon-frog/textures/ao02.png',
+  // if `desired_height` is set, we auto-scale the model to that height
+  // `scale` then works as a small multiplier
+  desired_height: 1.1,
+  scale: 1.0,
+
+  // placement
+  position: { x: 30, z: 30 },
+  height_offset: 0,
+  rotation_y: Math.PI,
+  safe_clear_distance: 10,
+
+  // detection + interaction
+  detection_distance: 18,
+  interaction_distance: 5,
+
+  // behavior
+  look_at_player: true,
+  look_turn_speed: 6.5,
+  // some models have a different forward axis
+  facing_yaw_offset: Math.PI,
+
+  // quest marker
+  quest_marker: {
+    gltf: './resources/quest_givers/quest_marker/scene.gltf',
+    scale: 0.2,
+    height_offset: 0.25
+  },
+
+  // ui
+  ui: {
+    frame_default: './resources/ui/Text_Frog.png',
+    frog_portrait: './resources/ui/Sapo.png'
+  },
+
+  // dialogue
+  typewriter_ms: 22,
+  dialogue_lines: [
+    { text: 'hey there!', bg: './resources/ui/Text_Frog.png' },
+    { text: "uh... i don't think i've ever seen a creature like you before.", bg: './resources/ui/Text_Frog.png' },
+    { text: "either way... i'm lenny! lenny the frog ^^", bg: './resources/ui/Lenny.png' },
+    { text: 'nice to meet you stranger-', bg: './resources/ui/Lenny.png' }
+  ],
+
+  // sfx
+  sfx: {
+    detect: './resources/sounds/gameplay/sfx/everything-else/NPCDetectsYou.mp3',
+    detect_volume: 0.7,
+    speak: './resources/sounds/gameplay/sfx/everything-else/frog-speak.mp3',
+    speak_volume: 1.0
+  }
 };

@@ -14,6 +14,8 @@ export class CameraController {
     this.last_x = 0;
     this.last_y = 0;
 
+    this._lastFinalAngle = 0;
+
     this.setup_mouse_controls();
   }
   
@@ -63,6 +65,7 @@ export class CameraController {
 
     const base_angle = typeof target_rotation === 'number' ? target_rotation : 0;
     const final_angle = base_angle + this.angle_offset;
+    this._lastFinalAngle = final_angle;
 
     const x = Math.sin(final_angle) * Math.cos(this.verticalAngle) * this.distance;
     const y = Math.sin(this.verticalAngle) * this.distance + this.height;
@@ -94,5 +97,11 @@ export class CameraController {
       this.camera.position.y = min_y;
     }
     this.camera.lookAt(target_position.x, target_position.y, target_position.z);
+  }
+
+  // yaw (radians) of the camera's forward direction projected on xz
+  // (camera looks at the target, so forward is opposite of orbit angle)
+  get_view_yaw() {
+    return (typeof this._lastFinalAngle === 'number' ? this._lastFinalAngle : 0) + Math.PI;
   }
 }

@@ -173,6 +173,44 @@ export class LoadingScreen {
     window.addEventListener('click', start_game);
   }
 
+  hideImmediately(callback) {
+    if (!this.loading_container) {
+      if (callback) callback();
+      return;
+    }
+
+    this.is_loading = false;
+    this.can_interact = false;
+    this.waiting_for_input = false;
+
+    if (this.dot_interval) {
+      clearInterval(this.dot_interval);
+      this.dot_interval = null;
+    }
+
+    if (callback) callback();
+
+    this.loading_container.style.transition = 'opacity 0.5s ease-out';
+    this.loading_container.style.opacity = '0';
+
+    setTimeout(() => {
+      if (this.loading_container) {
+        this.loading_container.remove();
+        this.loading_container = null;
+      }
+
+      if (this.renderer) {
+        this.renderer.dispose();
+      }
+
+      this.scene = null;
+      this.camera = null;
+      this.renderer = null;
+      this.fox = null;
+      this.mixer = null;
+    }, 500);
+  }
+
   onGameReady(callback) {
     this.is_loading = false;
     this.can_interact = true;

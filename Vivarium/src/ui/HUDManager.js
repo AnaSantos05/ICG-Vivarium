@@ -26,6 +26,14 @@ export class HUDManager {
     this.bossSkullIcon.onload = () => {
       this.bossSkullIconLoaded = true;
     };
+
+    // npc (frog) icon for the minimap
+    this.npcQuestionIcon = new Image();
+    this.npcQuestionIconLoaded = false;
+    this.npcQuestionIcon.src = './resources/ui/question_mark.svg';
+    this.npcQuestionIcon.onload = () => {
+      this.npcQuestionIconLoaded = true;
+    };
   }
 
   init() {
@@ -45,7 +53,7 @@ export class HUDManager {
       position: fixed;
       inset: 0;
       pointer-events: none;
-      z-index: 5000;
+      z-index: 9000;
       font-family: 'Press Start 2P', system-ui, sans-serif;
       color: #ffffff;
     `;
@@ -149,6 +157,7 @@ export class HUDManager {
 
     // health & stamina bars (bottom-center)
     const barsGroup = document.createElement('div');
+    barsGroup.id = 'hud-bars';
     barsGroup.style.cssText = `
       position: absolute;
       left: 50%;
@@ -249,8 +258,8 @@ export class HUDManager {
     this.staminaFill.style.width = `${clamped * 100}%`;
   }
 
-  // updates the minimap: tree markers + boss marker + player icon.
-  update(playerPosition, treeMarkers, bossPosition = null, isBossInRange = false) {
+  // updates the minimap: tree markers + boss marker + npc marker + player icon.
+  update(playerPosition, playerRotation, cameraViewYaw, treeMarkers, bossPosition = null, isBossInRange = false, npcPosition = null) {
     if (!this.minimapCanvas || !this.minimapContext || !playerPosition) return;
 
     if (Array.isArray(treeMarkers)) {
@@ -331,13 +340,84 @@ export class HUDManager {
       }
     }
 
+    // npc marker (frog / quest giver)
+    if (npcPosition && typeof npcPosition.x === 'number' && typeof npcPosition.z === 'number') {
+      const relX = (npcPosition.x - playerPosition.x) * this.minimapScale;
+      const relZ = (npcPosition.z - playerPosition.z) * this.minimapScale;
+
+      const edge_pad = 12;
+      const maxX = w / 2 - edge_pad;
+      const maxY = h / 2 - edge_pad;
+
+      let nx = centerX + relX;
+      let ny = centerY + relZ;
+
+      const absX = Math.abs(relX);
+      const absY = Math.abs(relZ);
+      const is_offscreen = absX > maxX || absY > maxY;
+      if (is_offscreen) {
+        const sx = absX > 0.0001 ? maxX / absX : 1;
+        const sy = absY > 0.0001 ? maxY / absY : 1;
+        const s = Math.min(sx, sy);
+        nx = centerX + relX * s;
+        ny = centerY + relZ * s;
+      }
+
+      // show the question mark only when the npc is inside the minimap view
+      // keep the dot only when the npc is offscreen (clamped)
+      if (!is_offscreen && this.npcQuestionIconLoaded) {
+        const size = 26;
+        ctx.drawImage(this.npcQuestionIcon, nx - size / 2, ny - size / 2, size, size);
+      } else {
+        // offscreen (or icon not loaded): yellow dot
+        ctx.fillStyle = '#ffd700';
+        ctx.beginPath();
+        ctx.arc(nx, ny, 4.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
     // player icon (fox) fixed at the center
     const iconSize = 22;
-    const px = centerX - iconSize / 2;
-    const pz = centerY - iconSize / 2;
+
+    // camera view funnel around the player
+    {
+      const yaw = typeof cameraViewYaw === 'number'
+        ? cameraViewYaw
+        : (typeof playerRotation === 'number' ? playerRotation : 0);
+
+      // our yaw uses +z as 0 (down on the minimap), but canvas arc angles use +x as 0
+      const theta = Math.PI / 2 - yaw;
+
+      const radius = 34;
+      const halfAngle = 0.5; // ~57° total
+
+      ctx.save();
+      ctx.translate(centerX, centerY);
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, radius, theta - halfAngle, theta + halfAngle);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(theta) * radius, Math.sin(theta) * radius);
+      ctx.stroke();
+
+      ctx.restore();
+    }
 
     if (this.foxIconLoaded) {
-      ctx.drawImage(this.foxIcon, px, pz, iconSize, iconSize);
+      ctx.drawImage(this.foxIcon, centerX - iconSize / 2, centerY - iconSize / 2, iconSize, iconSize);
     } else {
       // fallback: red dot
       ctx.fillStyle = '#ff5522';

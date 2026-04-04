@@ -5,6 +5,7 @@ export class InputManager {
       a: false,
       s: false,
       d: false,
+      e: false,
       shift: false,
       q: false,
       r: false,
@@ -15,6 +16,7 @@ export class InputManager {
     };
 
     this.keyJustPressed = {
+      e: false,
       q: false,
       r: false
     };
