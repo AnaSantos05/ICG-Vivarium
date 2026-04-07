@@ -13,6 +13,7 @@ import { BossManager } from './entities/BossManager.js';
 import { NPCManager } from './entities/NPCManager.js';
 import { InputManager } from './input/InputManager.js';
 import { LoadingScreen } from './ui/LoadingScreen.js';
+import { TutorialOverlay } from './ui/TutorialOverlay.js';
 import { CinematicManager } from './core/CinematicManager.js';
 import { IntroScreen } from './ui/IntroScreen.js';
 import { CreditsIntroScreen } from './ui/CreditsIntroScreen.js';
@@ -28,6 +29,10 @@ document.body.style.backgroundColor = '#000000';
 document.body.style.margin = '0';
 document.body.style.padding = '0';
 document.body.style.overflow = 'hidden';
+
+// preload tutorial media early to avoid delays when the overlay opens
+const __tutorialGifPreload = new Image();
+__tutorialGifPreload.src = './resources/start/tutorial/tudo.GIF';
 
 // ui and audio
 const audioManager = new AudioManager();
@@ -59,6 +64,8 @@ let cameraController = null;
 let cinematic_manager = null;
 let bossUIManager = null;
 
+let tutorialOverlay = null;
+
 // shared arena info for ui/music triggers
 let arena_zone = null;
 
@@ -70,6 +77,7 @@ let dev_quick_start_triggered = false;
 
 let assets_to_load = 4; // player, vegetation, npc, boss
 let assets_loaded = 0;
+let post_load_flow_started = false;
 
 const clock = new THREE.Clock();
 
@@ -81,11 +89,12 @@ function onAssetLoaded() {
     loadingScreen.updateProgress(progress);
   }
 
-  if (assets_loaded >= assets_to_load && loadingScreen) {
+  if (!post_load_flow_started && assets_loaded >= assets_to_load && loadingScreen) {
+    post_load_flow_started = true;
     setTimeout(() => {
       const startGameplayImmediately = () => {
         game_started = true;
-        controls_enabled = true;
+        controls_enabled = false;
         audioManager.startGameplayAmbience();
         console.log('game start (dev quick start)');
 
@@ -97,6 +106,11 @@ function onAssetLoaded() {
           hudManager = new HUDManager();
           hudManager.init();
         }
+
+        if (!tutorialOverlay) tutorialOverlay = new TutorialOverlay();
+        tutorialOverlay.show(() => {
+          controls_enabled = true;
+        });
       };
 
       if (dev_skip_flow && typeof loadingScreen.hideImmediately === 'function') {
@@ -113,28 +127,44 @@ function onAssetLoaded() {
           audioManager.startGameplayAmbience();
           console.log('game start after loading');
 
-          if (cinematic_manager) {
-            cinematic_manager.start(() => {
-              controls_enabled = true;
-              console.log('cinematic finished, controls enabled');
-              // only show the hud after the cinematic ends
-              if (!hudManager) {
-                hudManager = new HUDManager();
-                hudManager.init();
-              }
-            });
-          } else {
-            controls_enabled = true;
+          controls_enabled = false;
+          if (!tutorialOverlay) tutorialOverlay = new TutorialOverlay();
+          tutorialOverlay.show(() => {
+            if (cinematic_manager) {
+              cinematic_manager.start(() => {
+                // only show the hud after the cinematic ends
+                if (!hudManager) {
+                  hudManager = new HUDManager();
+                  hudManager.init();
+                }
+
+                controls_enabled = true;
+                console.log('cinematic finished, controls enabled');
+              });
+              return;
+            }
+
             if (!hudManager) {
               hudManager = new HUDManager();
               hudManager.init();
             }
-          }
+            controls_enabled = true;
+          });
         });
       });
     }, 300);
   }
 }
+
+// allow reopening the tutorial from the hud (settings)
+window.addEventListener('vivarium:open-tutorial', () => {
+  if (!tutorialOverlay) tutorialOverlay = new TutorialOverlay();
+  const prev = controls_enabled;
+  controls_enabled = false;
+  tutorialOverlay.show(() => {
+    controls_enabled = prev;
+  });
+});
 
 function startCoreGame() {
   // start loading screen and core systems only after play

@@ -194,7 +194,7 @@ export class HUDManager {
       pointer-events: auto;
     `;
     settingsBtn.addEventListener('click', () => {
-      alert('Settings - em breve.');
+      window.dispatchEvent(new CustomEvent('vivarium:open-tutorial'));
     });
     root.appendChild(settingsBtn);
 
