@@ -27,7 +27,7 @@ export class HUDManager {
       this.bossSkullIconLoaded = true;
     };
 
-    // npc (frog) icon for the minimap
+    // npc icon for the minimap (quest giver = '?')
     this.npcQuestionIcon = new Image();
     this.npcQuestionIconLoaded = false;
     this.npcQuestionIcon.src = './resources/ui/question_mark.svg';
@@ -258,7 +258,7 @@ export class HUDManager {
     this.staminaFill.style.width = `${clamped * 100}%`;
   }
 
-  // updates the minimap: tree markers + boss marker + npc marker + player icon.
+  // updates the minimap: trees + boss + npcs + player icon.
   update(playerPosition, playerRotation, cameraViewYaw, treeMarkers, bossPosition = null, isBossInRange = false, npcPosition = null) {
     if (!this.minimapCanvas || !this.minimapContext || !playerPosition) return;
 
@@ -340,10 +340,16 @@ export class HUDManager {
       }
     }
 
-    // npc marker (frog / quest giver)
-    if (npcPosition && typeof npcPosition.x === 'number' && typeof npcPosition.z === 'number') {
-      const relX = (npcPosition.x - playerPosition.x) * this.minimapScale;
-      const relZ = (npcPosition.z - playerPosition.z) * this.minimapScale;
+    // npc markers (quest givers)
+    const npcPositions = Array.isArray(npcPosition)
+      ? npcPosition
+      : (npcPosition && typeof npcPosition === 'object' ? [npcPosition] : []);
+
+    for (const pos of npcPositions) {
+      if (!pos || typeof pos.x !== 'number' || typeof pos.z !== 'number') continue;
+
+      const relX = (pos.x - playerPosition.x) * this.minimapScale;
+      const relZ = (pos.z - playerPosition.z) * this.minimapScale;
 
       const edge_pad = 12;
       const maxX = w / 2 - edge_pad;
@@ -363,13 +369,11 @@ export class HUDManager {
         ny = centerY + relZ * s;
       }
 
-      // show the question mark only when the npc is inside the minimap view
-      // keep the dot only when the npc is offscreen (clamped)
+      // show '?' only when inside; otherwise keep a dot so we don't lose it
       if (!is_offscreen && this.npcQuestionIconLoaded) {
         const size = 26;
         ctx.drawImage(this.npcQuestionIcon, nx - size / 2, ny - size / 2, size, size);
       } else {
-        // offscreen (or icon not loaded): yellow dot
         ctx.fillStyle = '#ffd700';
         ctx.beginPath();
         ctx.arc(nx, ny, 4.2, 0, Math.PI * 2);

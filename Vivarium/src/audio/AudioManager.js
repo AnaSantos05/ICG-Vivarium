@@ -29,7 +29,7 @@ export class AudioManager {
     this.sounds.forestAmbience.loop = true;
     this.sounds.forestAmbience.volume = 0.22;
 
-    // battle music (same asset as vivarium-vite)
+    // battle music (yep, the dramatic one)
     this.sounds.bossMusic = new Audio('./resources/sounds/bosses/one.mp3');
     this.sounds.bossMusic.loop = true;
     this.sounds.bossMusic.volume = 0.5;

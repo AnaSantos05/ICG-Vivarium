@@ -1,7 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.118.1/build/three.module.js';
 import { FBXLoader } from 'https://cdn.jsdelivr.net/npm/three@0.118.1/examples/jsm/loaders/FBXLoader.js';
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.118.1/examples/jsm/loaders/GLTFLoader.js';
-import { FROG_CONFIG } from '../config/gameConfig.js';
+import { FROG_CONFIG, DUCK_CONFIG } from '../config/gameConfig.js';
 
 export class NPCManager {
   constructor(scene, terrainManager, vegetationManager) {
@@ -10,15 +10,23 @@ export class NPCManager {
     this.vegetationManager = vegetationManager;
 
     this.frog = null;
+    this.duck = null;
+
     this.exclamationMark = null;
+    this.duckExclamationMark = null;
 
     this.frogBaseYaw = 0;
+    this.duckBaseYaw = 0;
 
     this.frog_height = 1;
+    this.duck_height = 1;
 
     this.wasPlayerDetected = false;
+    this.wasDuckPlayerDetected = false;
     this.isPlayerInInteractionRange = false;
     this.isDialogueOpen = false;
+
+    this.activeNpcKey = 'frog';
 
     this.interactionPrompt = null;
     this.dialogueContainer = null;
@@ -49,9 +57,18 @@ export class NPCManager {
     return this.frog ? this.frog.position : null;
   }
 
+  getMinimapNpcPositions() {
+    // minimap only needs x/z, so just return the positions we have
+    const positions = [];
+    if (this.frog && this.frog.position) positions.push(this.frog.position);
+    if (this.duck && this.duck.position) positions.push(this.duck.position);
+    return positions;
+  }
+
   init(onLoadCallback) {
     this.onLoadCallback = typeof onLoadCallback === 'function' ? onLoadCallback : null;
     this.loadFrog();
+    this.loadDuck();
   }
 
   createInteractionPrompt() {
@@ -165,14 +182,14 @@ export class NPCManager {
   loadExclamationMark() {
     const loader = new GLTFLoader();
     loader.load(FROG_CONFIG.quest_marker.gltf, (gltf) => {
-      this.exclamationMark = gltf.scene;
+      const template = gltf.scene;
 
       // make the marker face the camera correctly (asset comes flipped)
-      this.exclamationMark.rotation.y += Math.PI;
+      template.rotation.y += Math.PI;
 
       // remove the question mark meshes, keep only exclamation
       const toRemove = [];
-      this.exclamationMark.traverse((child) => {
+      template.traverse((child) => {
         if (child && child.isMesh && child.position && child.position.x < 0) {
           toRemove.push(child);
         }
@@ -181,10 +198,19 @@ export class NPCManager {
         if (mesh.parent) mesh.parent.remove(mesh);
       }
 
+      // clone a marker per npc
+      this.exclamationMark = template.clone(true);
       this.exclamationMark.scale.setScalar(FROG_CONFIG.quest_marker.scale);
       this.exclamationMark.visible = false;
 
-      if (this.scene) this.scene.add(this.exclamationMark);
+      this.duckExclamationMark = template.clone(true);
+      this.duckExclamationMark.scale.setScalar((DUCK_CONFIG && DUCK_CONFIG.quest_marker && DUCK_CONFIG.quest_marker.scale) || FROG_CONFIG.quest_marker.scale);
+      this.duckExclamationMark.visible = false;
+
+      if (this.scene) {
+        this.scene.add(this.exclamationMark);
+        this.scene.add(this.duckExclamationMark);
+      }
     });
   }
 
@@ -243,6 +269,54 @@ export class NPCManager {
     });
   }
 
+  loadDuck() {
+    const loader = new GLTFLoader();
+    loader.load(`${DUCK_CONFIG.path}${DUCK_CONFIG.model}`, (gltf) => {
+      // some glb files have the origin in weird places (thanks, exporter).
+      // so we ground-align it using the bbox, then move/rotate a root group.
+      const duckModel = gltf.scene;
+      this.duck = duckModel;
+      this.applyDuckScale();
+
+      duckModel.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(duckModel);
+      const minY = box.min.y;
+      if (Number.isFinite(minY) && minY < 0) {
+        duckModel.position.y += -minY;
+        duckModel.updateMatrixWorld(true);
+      }
+
+      const duckRoot = new THREE.Group();
+      duckRoot.add(duckModel);
+      this.duck = duckRoot;
+
+      let px = DUCK_CONFIG.position.x;
+      let pz = DUCK_CONFIG.position.z;
+      if (this.vegetationManager && typeof this.vegetationManager.find_safe_position_around === 'function') {
+        const safe = this.vegetationManager.find_safe_position_around(px, pz, DUCK_CONFIG.safe_clear_distance, 50);
+        px = safe.x;
+        pz = safe.z;
+      }
+
+      const y = this.terrainManager.getTerrainHeight(px, pz) + (DUCK_CONFIG.height_offset || 0);
+      duckRoot.position.set(px, y, pz);
+      duckRoot.rotation.y = DUCK_CONFIG.rotation_y;
+      duckRoot.rotation.order = 'YXZ';
+      this.duckBaseYaw = duckRoot.rotation.y;
+
+      duckModel.traverse((child) => {
+        if (!child || !child.isMesh) return;
+        child.castShadow = true;
+        child.receiveShadow = true;
+        if (child.material) {
+          child.material.needsUpdate = true;
+        }
+      });
+
+      if (this.scene) this.scene.add(duckRoot);
+    });
+  }
+
   applyFrogScale() {
     if (!this.frog) return;
 
@@ -279,6 +353,39 @@ export class NPCManager {
     this.frog_height = this.measureObjectHeight(this.frog) || desired;
   }
 
+  applyDuckScale() {
+    if (!this.duck) return;
+
+    const desired = typeof DUCK_CONFIG.desired_height === 'number' ? DUCK_CONFIG.desired_height : null;
+    const mult = typeof DUCK_CONFIG.scale === 'number' ? DUCK_CONFIG.scale : 1;
+
+    if (!desired || desired <= 0) {
+      this.duck.scale.setScalar(mult);
+      this.duck.updateMatrixWorld(true);
+      this.duck_height = this.measureObjectHeight(this.duck) || 1;
+      return;
+    }
+
+    this.duck.scale.setScalar(1);
+    this.duck.updateMatrixWorld(true);
+
+    const box = new THREE.Box3().setFromObject(this.duck);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const h = size.y;
+    if (!Number.isFinite(h) || h <= 0.0001) {
+      this.duck.scale.setScalar(mult);
+      this.duck.updateMatrixWorld(true);
+      this.duck_height = this.measureObjectHeight(this.duck) || 1;
+      return;
+    }
+
+    const s = (desired / h) * mult;
+    this.duck.scale.setScalar(s);
+    this.duck.updateMatrixWorld(true);
+    this.duck_height = this.measureObjectHeight(this.duck) || desired;
+  }
+
   measureObjectHeight(obj) {
     if (!obj) return 0;
     const box = new THREE.Box3().setFromObject(obj);
@@ -301,67 +408,117 @@ export class NPCManager {
     return base + h * 0.75 + extra;
   }
 
-  update(playerPosition, inputManager = null) {
-    if (!this.frog || !playerPosition) return;
+  getDuckQuestMarkerY() {
+    const base = this.duck ? this.duck.position.y : 0;
+    const h = Number.isFinite(this.duck_height) && this.duck_height > 0 ? this.duck_height : 1;
 
-    // keep quest marker above npc
-    if (this.exclamationMark) {
-      this.exclamationMark.position.set(
-        this.frog.position.x,
-        this.getQuestMarkerY(),
-        this.frog.position.z
-      );
+    const cfg = DUCK_CONFIG && DUCK_CONFIG.quest_marker ? DUCK_CONFIG.quest_marker : {};
+    const raw_extra = typeof cfg.height_offset === 'number' ? cfg.height_offset : 0;
+    const extra = Math.max(0, Math.min(raw_extra, h * 0.35));
+
+    // push it a tiny bit higher than the frog so it doesn't hug the head
+    return base + h * 0.85 + extra;
+  }
+
+  update(playerPosition, inputManager = null) {
+    if (!playerPosition) return;
+
+    // keep quest markers above npcs
+    if (this.frog && this.exclamationMark) {
+      this.exclamationMark.position.set(this.frog.position.x, this.getQuestMarkerY(), this.frog.position.z);
+    }
+    if (this.duck && this.duckExclamationMark) {
+      this.duckExclamationMark.position.set(this.duck.position.x, this.getDuckQuestMarkerY(), this.duck.position.z);
     }
 
-    const dx = playerPosition.x - this.frog.position.x;
-    const dz = playerPosition.z - this.frog.position.z;
-    const distance = Math.sqrt(dx * dx + dz * dz);
+    // give the marker a simple spin so it feels more alive
+    if (this.exclamationMark) this.exclamationMark.rotation.y += 0.03;
+    if (this.duckExclamationMark) this.duckExclamationMark.rotation.y += 0.03;
 
-    const isDetected = distance < FROG_CONFIG.detection_distance;
-    const isInteractable = distance < FROG_CONFIG.interaction_distance;
+    // choose which npc is currently the interaction target (nearest)
+    const candidates = [];
+    if (this.frog) {
+      const dx = playerPosition.x - this.frog.position.x;
+      const dz = playerPosition.z - this.frog.position.z;
+      candidates.push({ key: 'frog', obj: this.frog, dx, dz, dist: Math.sqrt(dx * dx + dz * dz), cfg: FROG_CONFIG });
+    }
+    if (this.duck) {
+      const dx = playerPosition.x - this.duck.position.x;
+      const dz = playerPosition.z - this.duck.position.z;
+      candidates.push({ key: 'duck', obj: this.duck, dx, dz, dist: Math.sqrt(dx * dx + dz * dz), cfg: DUCK_CONFIG });
+    }
 
-    // look at the player when nearby / interacting
-    const look_at_player = FROG_CONFIG.look_at_player !== false;
-    // always face the player while interacting / in dialogue.
-    // when just detected, respect the config toggle.
-    const shouldLook = this.isDialogueOpen || isInteractable || (isDetected && look_at_player);
-    if (shouldLook) {
-      // most imported rigs face the opposite direction, so default to pi.
-      // allow per-asset override via config.
-      const yaw_offset = typeof FROG_CONFIG.facing_yaw_offset === 'number' ? FROG_CONFIG.facing_yaw_offset : Math.PI;
-      const targetYaw = Math.atan2(dx, dz) + yaw_offset;
+    if (candidates.length === 0) return;
+    candidates.sort((a, b) => a.dist - b.dist);
 
-      // snap while in dialogue so it's obvious and consistent
-      if (this.isDialogueOpen || isInteractable) {
-        this.frog.rotation.y = targetYaw;
-      } else {
-        const turnSpeed = typeof FROG_CONFIG.look_turn_speed === 'number' ? FROG_CONFIG.look_turn_speed : 10;
-        // approximate delta-time without threading dt through the entire game
+    // lock target during dialogue
+    let active = candidates[0];
+    if (this.isDialogueOpen) {
+      const locked = candidates.find((c) => c.key === this.activeNpcKey);
+      if (locked) active = locked;
+    } else {
+      this.activeNpcKey = active.key;
+    }
+
+    // per-npc detection/marker visibility + facing
+    for (const c of candidates) {
+      const isDetected = c.dist < c.cfg.detection_distance;
+      const isInteractable = c.dist < c.cfg.interaction_distance;
+
+      const look_at_player = c.cfg.look_at_player !== false;
+      const shouldLook = (this.isDialogueOpen && c.key === this.activeNpcKey) || isInteractable || (isDetected && look_at_player);
+      if (shouldLook) {
+        const yaw_offset = typeof c.cfg.facing_yaw_offset === 'number' ? c.cfg.facing_yaw_offset : Math.PI;
+        const targetYaw = Math.atan2(c.dx, c.dz) + yaw_offset;
+        if ((this.isDialogueOpen && c.key === this.activeNpcKey) || isInteractable) {
+          c.obj.rotation.y = targetYaw;
+        } else {
+          const turnSpeed = typeof c.cfg.look_turn_speed === 'number' ? c.cfg.look_turn_speed : 10;
+          const dt = 1 / 60;
+          const t = Math.max(0, Math.min(1, turnSpeed * dt));
+          c.obj.rotation.y = this.lerpAngle(c.obj.rotation.y, targetYaw, t);
+        }
+      } else if (!this.isDialogueOpen) {
+        const turnSpeed = 6;
         const dt = 1 / 60;
         const t = Math.max(0, Math.min(1, turnSpeed * dt));
-        this.frog.rotation.y = this.lerpAngle(this.frog.rotation.y, targetYaw, t);
+        if (c.key === 'frog' && typeof this.frogBaseYaw === 'number') {
+          c.obj.rotation.y = this.lerpAngle(c.obj.rotation.y, this.frogBaseYaw, t);
+        }
+        if (c.key === 'duck' && typeof this.duckBaseYaw === 'number') {
+          c.obj.rotation.y = this.lerpAngle(c.obj.rotation.y, this.duckBaseYaw, t);
+        }
       }
-    } else if (!this.isDialogueOpen && typeof this.frogBaseYaw === 'number') {
-      // softly return to base orientation when the player is far
-      const turnSpeed = 6;
-      const dt = 1 / 60;
-      const t = Math.max(0, Math.min(1, turnSpeed * dt));
-      this.frog.rotation.y = this.lerpAngle(this.frog.rotation.y, this.frogBaseYaw, t);
+
+      if (c.key === 'frog') {
+        if (isDetected && !this.wasPlayerDetected) {
+          this.wasPlayerDetected = true;
+          this.safePlay(this.detectionSound);
+          if (this.exclamationMark) this.exclamationMark.visible = true;
+        }
+        if (!isDetected) {
+          this.wasPlayerDetected = false;
+          if (this.exclamationMark) this.exclamationMark.visible = false;
+        }
+      }
+
+      if (c.key === 'duck') {
+        if (isDetected && !this.wasDuckPlayerDetected) {
+          this.wasDuckPlayerDetected = true;
+          this.safePlay(this.detectionSound);
+          if (this.duckExclamationMark) this.duckExclamationMark.visible = true;
+        }
+        if (!isDetected) {
+          this.wasDuckPlayerDetected = false;
+          if (this.duckExclamationMark) this.duckExclamationMark.visible = false;
+        }
+      }
     }
 
-    if (isDetected && !this.wasPlayerDetected) {
-      this.wasPlayerDetected = true;
-      this.safePlay(this.detectionSound);
-      if (this.exclamationMark) this.exclamationMark.visible = true;
-    }
+    const isActiveInteractable = active.dist < active.cfg.interaction_distance;
 
-    if (!isDetected) {
-      this.wasPlayerDetected = false;
-      if (this.exclamationMark) this.exclamationMark.visible = false;
-    }
-
-    // prompt only when close and not in dialogue
-    if (isInteractable && !this.isDialogueOpen) {
+    // prompt only when close to active npc and not in dialogue
+    if (isActiveInteractable && !this.isDialogueOpen) {
       if (!this.isPlayerInInteractionRange) {
         this.isPlayerInInteractionRange = true;
         if (this.interactionPrompt) this.interactionPrompt.style.display = 'block';
@@ -378,7 +535,7 @@ export class NPCManager {
       : false;
 
     if (pressedInteract) {
-      if (!this.isDialogueOpen && isInteractable) {
+      if (!this.isDialogueOpen && isActiveInteractable) {
         this.openDialogue();
       } else if (this.isDialogueOpen) {
         this.advanceDialogue();

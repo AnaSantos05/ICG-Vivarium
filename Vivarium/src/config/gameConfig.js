@@ -173,3 +173,36 @@ export const FROG_CONFIG = {
     speak_volume: 1.0
   }
 };
+
+export const DUCK_CONFIG = {
+  // model
+  path: './resources/quest_givers/duck/',
+  model: 'chick2.glb',
+  // if `desired_height` is set, we auto-scale the model to that height
+  // `scale` then works as a small multiplier
+  desired_height: 1.1,
+  scale: 2.0,
+
+  // placement
+  position: { x: -20, z: 70 },
+  height_offset: 0,
+  rotation_y: 0,
+  safe_clear_distance: 8,
+
+  // detection + interaction
+  detection_distance: 18,
+  interaction_distance: 5,
+
+  // behavior
+  look_at_player: true,
+  look_turn_speed: 6.5,
+  // chick2.glb forward axis needs a yaw correction to face the player
+  facing_yaw_offset: -Math.PI / 2,
+
+  // quest marker (reuse the same asset)
+  quest_marker: {
+    gltf: './resources/quest_givers/quest_marker/scene.gltf',
+    scale: 0.2,
+    height_offset: 0.25
+  }
+};

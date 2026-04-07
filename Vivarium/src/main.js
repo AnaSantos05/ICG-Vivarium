@@ -393,6 +393,9 @@ function animate() {
     const treeMarkers = vegetationManager ? vegetationManager.get_tree_minimap_markers() : null;
     const bossPos = bossManager ? bossManager.getPosition() : null;
     const npcPos = npcManager && typeof npcManager.getPosition === 'function' ? npcManager.getPosition() : null;
+    const npcPositions = npcManager && typeof npcManager.getMinimapNpcPositions === 'function'
+      ? npcManager.getMinimapNpcPositions()
+      : npcPos;
 
     // reuse the arena logic: skull in range, dot out of range
     let isInArena = false;
@@ -403,7 +406,7 @@ function animate() {
     }
 
     const bossLoaded = bossManager ? !!bossManager.getBoss() : false;
-    // update camera first so the minimap can show the correct view direction
+    // update camera first so the minimap can show the right view direction
     if (cameraController && inputManager && terrainManager) {
       cameraController.update(target, playerRotation, inputManager, terrainManager);
     }
@@ -412,7 +415,7 @@ function animate() {
       ? cameraController.get_view_yaw()
       : playerRotation;
 
-    hudManager.update(playerPosition, playerRotation, cameraViewYaw, treeMarkers, bossPos, isInArena && bossLoaded, npcPos);
+    hudManager.update(playerPosition, playerRotation, cameraViewYaw, treeMarkers, bossPos, isInArena && bossLoaded, npcPositions);
   }
 
   // keep updating the camera even if HUD is disabled

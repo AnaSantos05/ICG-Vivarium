@@ -8,11 +8,11 @@ export class MainMenu {
     this.onQuit = null;
   }
 
-  // called from main.js after PLAY: builds the full Vivarium-Vite style menu
+  // called from main.js after play: builds the full menu
   init() {
     this.createMenuUI();
-    // music is handled by AudioManager in this project,
-    // so we don't call setupAudio() here to avoid double audio.
+    // music is handled by audiomanager in this project,
+    // so we don't call setupaudio() here to avoid double audio.
   }
 
   createMenuUI() {
