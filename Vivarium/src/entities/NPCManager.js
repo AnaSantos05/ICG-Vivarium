@@ -46,11 +46,29 @@ export class NPCManager {
     this.dialogueData = Array.isArray(FROG_CONFIG.dialogue_lines) ? FROG_CONFIG.dialogue_lines : [];
     this.currentDialogueLine = 0;
 
+    // when true, `line.bg` is respected; when false we force the npc default frame
+    // (useful when we fall back to another npc's dialogue lines)
+    this._useLineBackgrounds = true;
+
     this.onLoadCallback = null;
 
     this.createInteractionPrompt();
     this.createDialogueUI();
     this.loadExclamationMark();
+  }
+
+  getActiveNpcConfig() {
+    return this.activeNpcKey === 'duck' ? DUCK_CONFIG : FROG_CONFIG;
+  }
+
+  getNpcFrameDefault(cfg) {
+    return (cfg && cfg.ui && cfg.ui.frame_default) || (FROG_CONFIG && FROG_CONFIG.ui && FROG_CONFIG.ui.frame_default);
+  }
+
+  getNpcPortraitSrc(cfg) {
+    const ui = (cfg && cfg.ui) || {};
+    // historical naming: both configs use `frog_portrait` as the portrait key
+    return ui.frog_portrait || ui.duck_portrait || ui.portrait || (FROG_CONFIG && FROG_CONFIG.ui && FROG_CONFIG.ui.frog_portrait);
   }
 
   getPosition() {
@@ -142,8 +160,8 @@ export class NPCManager {
     // keep dialogue text centered and away from the frame edges
     // (also stays above the hp/stamina hud bars)
     textWrapper.style.left = '50%';
-    // place text lower inside the frame
-    textWrapper.style.bottom = 'clamp(220px, 14vh, 320px)';
+    // place text higher inside the frame
+    textWrapper.style.bottom = 'clamp(320px, 18vh, 440px)';
     textWrapper.style.transform = 'translateX(-50%)';
     textWrapper.style.width = 'clamp(620px, 58vw, 1100px)';
     textWrapper.style.boxSizing = 'border-box';
@@ -547,6 +565,21 @@ export class NPCManager {
     this.isDialogueOpen = true;
     this.currentDialogueLine = 0;
 
+    // pick dialogue + UI assets based on the active npc
+    const cfg = this.getActiveNpcConfig();
+    const cfgDialogue = Array.isArray(cfg && cfg.dialogue_lines) ? cfg.dialogue_lines : [];
+    const fallbackDialogue = Array.isArray(FROG_CONFIG && FROG_CONFIG.dialogue_lines) ? FROG_CONFIG.dialogue_lines : [];
+    this.dialogueData = cfgDialogue.length > 0 ? cfgDialogue : fallbackDialogue;
+    this._useLineBackgrounds = cfgDialogue.length > 0;
+
+    if (this.frogImage) {
+      this.frogImage.src = this.getNpcPortraitSrc(cfg);
+    }
+    if (this.dialogueContainer) {
+      const bg = this.getNpcFrameDefault(cfg);
+      if (bg) this.dialogueContainer.style.backgroundImage = `url(${bg})`;
+    }
+
     const hudBars = document.getElementById('hud-bars');
     if (hudBars) {
       // preserve original display so we can restore it correctly (flex)
@@ -636,7 +669,9 @@ export class NPCManager {
 
     // update frame background per line
     if (this.dialogueContainer) {
-      const bg = line.bg || FROG_CONFIG.ui.frame_default;
+      const cfg = this.getActiveNpcConfig();
+      const fallbackBg = this.getNpcFrameDefault(cfg);
+      const bg = (this._useLineBackgrounds && line.bg) ? line.bg : fallbackBg;
       this.dialogueContainer.style.backgroundImage = `url(${bg})`;
     }
 
@@ -647,6 +682,9 @@ export class NPCManager {
 
     const text = String(line.text || '');
     this.isTyping = true;
+
+    const cfg = this.getActiveNpcConfig();
+    const typewriterMs = typeof (cfg && cfg.typewriter_ms) === 'number' ? cfg.typewriter_ms : FROG_CONFIG.typewriter_ms;
 
     const typeNext = (i) => {
       if (!this.isTyping) return;
@@ -663,7 +701,7 @@ export class NPCManager {
         return;
       }
 
-      this.typewriterTimer = setTimeout(() => typeNext(i + 1), FROG_CONFIG.typewriter_ms);
+      this.typewriterTimer = setTimeout(() => typeNext(i + 1), typewriterMs);
     };
 
     typeNext(1);

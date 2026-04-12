@@ -183,6 +183,18 @@ export const DUCK_CONFIG = {
   desired_height: 1.1,
   scale: 2.0,
 
+  // ui
+  ui: {
+    frame_default: './resources/ui/Peep.png',
+    frog_portrait: './resources/ui/Chick.png'
+  },
+
+  // dialogue
+  dialogue_lines: [
+    { text: 'Peep!' },
+    { text: "Hi fox! I'm Peep! Nice to meet ya!" }
+  ],
+
   // placement
   position: { x: -20, z: 70 },
   height_offset: 0,
