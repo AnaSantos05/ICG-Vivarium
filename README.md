@@ -117,13 +117,17 @@ Then open the URL shown in the terminal (usually `http://localhost:5173`).
 ## Current controls
 
 - **Movement**
-  - `W` / `S` – move the fox forward and backward
-  - `A` / `D` – rotate the fox left and right
-  - `Shift` – sprint
+  - `W` / `S` - move the fox forward and backward
+  - `A` / `D` - rotate the fox left and right
+  - `Shift` - sprint
 
-- camera
+- **Camera**
   - arrow keys rotate and tilt the camera around the fox
   - when the fox rotates with `a` / `d` the camera follows his rotation
+    
+- **Attack**
+  - `Q` - tail attack
+  - `R` - paw attack
 
 ## Performance / optimizations
 
