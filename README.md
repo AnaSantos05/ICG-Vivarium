@@ -13,21 +13,18 @@ scenery and has to solve puzzles.​ Vivarium is inspired by it, but different; 
 # Requirements
 
 Requirements, ordered by priority:
+
 - A big world with a Minimap on UI. (F)
-
-- ​ The main character - a fox. A few NPCs as quest givers (min 1). And a minimum of 2 bosses. (F)
-
+- The main character - a fox. A few NPCs as quest givers (min 1). And a minimum of 2 bosses. (F)
 - Quest giving/accepting/completion system. (F)
-
- - Fight system and animations. (F)
-
-- ​ Inventory system. (F)
-
-- ​ Day and night system. (F)
-
-- ​ Ambient music, combat music and SFX. (NF)
-
+- Fight system and animations. (F)
+- Inventory system. (F)
+- The game has to be optimized to be able to run on a different variety of computers. (NF)
+- A functional tutorial at the beginning of the game. (F)
+- Day and night system. (F)
+- Ambient music, combat music and SFX. (NF)
 - Mini animated story to give context of the game, in the beginning of it. (NF)
+
 
 F - Functional Requirements, NF - Non-Functional Requirements
 
@@ -39,58 +36,58 @@ Vivarium/
 ├─ package.json
 ├─ public/
 │  └─ resources/
-│     ├─ fox/                   # fox model, animations and VFX
-│     ├─ ground/                # terrain textures
-│     │  └─ sky/                  # day/night sky textures
-│     │  └─ trees/                # vegetation models (glb/fbx + textures)
-│     │     ├─ Rita/              # custom trees made by me (Tree_final.glb)
-│     │     ├─ fantasy-x-tree-02/ # tree set used as tree variant
-│     │     └─ stylized-bush/     # bush fbx + textures
-│     ├─ bosses/                # (future) bosses and enemies
-│     ├─ quest_givers/          # (future) NPC models
-│     ├─ ui/                    # ui sprites (hud icons, minimap frame, favicon, etc.)
+│     ├─ fox/                    # fox model, animations and VFX
+│     ├─ ground/                 # terrain textures
+│     │  ├─ sky/                 # day/night sky textures
+│     │  └─ trees/               # vegetation models (glb/fbx + textures)
+│     │     ├─ Rita/             # custom trees made by me (Tree_final.glb)
+│     │     ├─ fantasy-x-tree-02/# tree set used as tree variant
+│     │     └─ stylized-bush/    # bush fbx + textures
+│     ├─ bosses/                 # (future) bosses and enemies (1 boss so far)
+│     ├─ quest_givers/           # NPC models
+│     ├─ ui/                     # ui sprites (hud icons, minimap frame, favicon, etc.)
 │     └─ sounds/
-│        ├─ intro/              # menu / intro music
-│        ├─ gameplay/           # exploration music
-│        └─ gameplay/sfx/       # ambience, fox sound, footsteps, etc.
+│        ├─ intro/               # menu / intro music
+│        ├─ gameplay/            # exploration music
+│        └─ gameplay/sfx/        # ambience, fox sound, footsteps, etc.
 │
 └─ src/
-   ├─ main.js                   # entry point and main loop; wires all managers and UI flow
-   ├─ style.css                 # base styles so canvas and overlays fill the window
+   ├─ main.js                    # entry point and main loop; wires all managers and UI flow
+   ├─ style.css                  # base styles so canvas and overlays fill the window
    │
    ├─ config/
-   │  └─ gameConfig.js          # camera, scene, terrain, light and player config
+   │  └─ gameConfig.js           # camera, scene, terrain, light and player config
    │
    ├─ core/
-   │  ├─ GameClock.js           # timekeeping used by the day/night cycle
-   │  ├─ SceneManager.js        # creates three.js scene, camera and renderer
-   │  ├─ LightingManager.js     # directional and ambient lights
-   │  └─ CinematicManager.js    # intro camera/fox cinematic before gameplay
+   │  ├─ GameClock.js            # timekeeping used by the day/night cycle
+   │  ├─ SceneManager.js         # creates three.js scene, camera and renderer
+   │  ├─ LightingManager.js      # directional and ambient lights
+   │  └─ CinematicManager.js     # intro camera/fox cinematic before gameplay
    │
    ├─ world/
-   │  ├─ SkyManager.js          # sky dome + day/night sky swapping
-   │  ├─ TerrainManager.js      # wavy terrain with grass texture and height queries
-   │  └─ VegetationManager.js   # trees, bushes, colliders and frustum‑culling registration
+   │  ├─ SkyManager.js           # sky dome + day/night sky swapping
+   │  ├─ TerrainManager.js       # wavy terrain with grass texture and height queries
+   │  └─ VegetationManager.js    # trees, bushes, colliders and frustum‑culling registration
    │
    ├─ camera/
-   │  └─ CameraController.js    # third‑person camera orbiting around the fox
+   │  └─ CameraController.js     # third‑person camera orbiting around the fox
    │
    ├─ entities/
-   │  └─ PlayerManager.js       # fox model, animations, movement, collisions and fox sounds
+   │  └─ PlayerManager.js        # fox model, animations, movement, collisions and fox sounds
    │
    ├─ input/
-   │  └─ InputManager.js        # keyboard input (WASD, arrows, Shift)
+   │  └─ InputManager.js         # keyboard input (WASD, arrows, Shift)
    │
    ├─ audio/
-   │  └─ AudioManager.js        # menu music, gameplay music and forest ambience
+   │  └─ AudioManager.js         # menu music, gameplay music and forest ambience
    │
    └─ ui/
-      ├─ CreditsIntroScreen.js  # lil intro
-      ├─ HUDManager.js          # in-game hud (minimap, backpack, bars, settings)
-      ├─ PlayScreen.js          # full‑screen PLAY button before heavy loading
-      ├─ MainMenu.js            # Vivarium main menu (New / Load / Quit + credits)
-      ├─ LoadingScreen.js       # 3D fox loading screen with progress
-      └─ IntroScreen.js         # black overlay used as transition into the cinematic
+      ├─ CreditsIntroScreen.js   # lil intro
+      ├─ HUDManager.js           # in-game hud (minimap, backpack, bars, settings)
+      ├─ PlayScreen.js           # full‑screen PLAY button before heavy loading
+      ├─ MainMenu.js             # Vivarium main menu (New / Load / Quit + credits)
+      ├─ LoadingScreen.js        # 3D fox loading screen with progress
+      └─ IntroScreen.js          # black overlay used as transition into the cinematic
 ```
 
 ---
@@ -267,3 +264,72 @@ Day/Night feature:
 <img width="1920" height="1080" alt="Screenshot from 2026-03-28 18-20-55" src="https://github.com/user-attachments/assets/ebdeaf5a-8066-4b13-ac9b-2948e07b52e6" />
 <img width="1920" height="1080" alt="Screenshot from 2026-03-28 18-34-13" src="https://github.com/user-attachments/assets/03da57eb-0b3a-49e3-96aa-6e20685ade08" />
 
+### 2026‑04‑2
+
+- added a Boss (placeholder, I will change it later with a model that I create)
+- added an arena
+- made the boss be activated whenever the player entered the ring (combat music activates as well), made it despawn whenever the main character leaved the arena (combat music fades)
+- put the ui of the healthbar of the boss there (still static)
+- played arround with the combat animations that the boss had in the model
+
+### Commits
+
+de88e49 - added boss, arena, boss on minimap and combat animation
+
+### 2026‑04‑4
+
+- added an NPC - a frog. It will be one of the quest givers.
+- I put the dialogue working (static for now until quests are available) with a character sprite.
+- Also, made it appear on the minimap
+- sound queues and dialogue sounds
+- quest mark above it
+- made it turn to the player if the player is near and then, when the player is not in that radius, it will look to a default point, so it's not that creepy :P
+
+### Commits
+
+dde300a - npc frog added, quick dialogue, plus it appearing on the minimap
+
+### 2026‑04‑7
+
+- I made the tutorial key design on Figma and animated it using kdenlive
+- put it at the beginning of the game -> it can be visited in the settings later
+- I modeled a new NPC - a duck - using blender.
+
+### Commits
+
+8de62e5 - Tutorial added
+83ceb2f - New NPC added- a duckie, extra stuff
+
+---
+
+Me creating the model of the duck NPC (in Blender):
+
+<img width="1920" height="1080" alt="Screenshot from 2026-04-07 14-13-18" src="https://github.com/user-attachments/assets/83e96970-7a7c-4776-ab04-fbaa4943396f" />
+
+<img width="1920" height="1080" alt="Screenshot from 2026-04-07 14-18-37" src="https://github.com/user-attachments/assets/f277f351-4f82-4752-acff-3e0303be9740" />
+
+<img width="1920" height="1080" alt="Screenshot from 2026-04-07 18-29-42" src="https://github.com/user-attachments/assets/e07cb2e3-8374-4b23-8e78-d80d8a4db428" />
+
+<img width="1920" height="1080" alt="Screenshot from 2026-04-07 18-59-23" src="https://github.com/user-attachments/assets/f750c7c0-ae4f-421f-9de8-bf20eca3eb89" />
+
+<img width="1920" height="1080" alt="Screenshot from 2026-04-07 19-04-18" src="https://github.com/user-attachments/assets/aa29d9d9-055e-41c2-84d6-fa7d6a571e6d" />
+
+<img width="723" height="422" alt="Screenshot from 2026-04-07 20-06-21" src="https://github.com/user-attachments/assets/8bb7bc5a-53ba-4994-bf20-33521cc4efe2" />
+
+---
+
+### 2026-04-12
+
+- I drew the character sprites for the new NPC, the duck
+
+### Commits
+
+1f8d0a1 - fixed dialogue
+
+---
+
+Short video of the state of the game:
+
+https://github.com/user-attachments/assets/4f35019a-4ef1-4f60-a3bc-000bf61b36ec
+
+---
