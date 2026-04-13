@@ -1,7 +1,9 @@
 export class GameClock {
   constructor() {
     this.ticks = 0;
-    this.dayLength = 600; // 600 seconds for a full day cycle
+    // for the demo
+    this.dayLength = 60; // 1 min should do it :P
+    // this.dayLength = 600; // 600 seconds for a full day cycle
     this.timeOfDay = 0; // 0..1 (0 = dawn, 0.25 = noon, 0.5 = dusk, 0.75 = midnight)
     this.isNight = false;
     this.listeners = [];
