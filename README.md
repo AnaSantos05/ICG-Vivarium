@@ -94,6 +94,12 @@ Vivarium/
 
 # How to run
 
+Github pages:
+
+https://anasantos05.github.io/ICG-Vivarium/
+
+Or, clone repo and:
+
 ```bash
 # install dependencies
 npm install
