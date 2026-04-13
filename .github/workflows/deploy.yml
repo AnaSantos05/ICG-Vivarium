@@ -35,7 +35,6 @@ jobs:
         with:
           node-version: lts/*
           cache: 'npm'
-          cache-dependency-path: "Vivarium"
       - name: Install dependencies
         working-directory: ./Vivarium
         run: npm ci
