@@ -33,9 +33,18 @@ export class NPCManager {
     this.frogImage = null;
     this.dialogueText = null;
     this.continuePrompt = null;
+    this.choiceContainer = null;
 
     this.isTyping = false;
     this.typewriterTimer = null;
+    this.interactionKey = 't';
+    this.activeChoices = null;
+
+    this.npcDialogueState = {
+      frog: { progressIndex: 0, storyCompleted: false },
+      duck: { progressIndex: 0 }
+    };
+    this.isUsingFrogStoryDialogue = false;
 
     this.detectionSound = new Audio(FROG_CONFIG.sfx.detect);
     this.detectionSound.volume = FROG_CONFIG.sfx.detect_volume;
@@ -45,16 +54,23 @@ export class NPCManager {
 
     this.dialogueData = Array.isArray(FROG_CONFIG.dialogue_lines) ? FROG_CONFIG.dialogue_lines : [];
     this.currentDialogueLine = 0;
+    this.dialogueHistory = [];
+
+    this.dialogueProvider = null;
 
     // when true, `line.bg` is respected; when false we force the npc default frame
     // (useful when we fall back to another npc's dialogue lines)
     this._useLineBackgrounds = true;
+    this.preloadedDialogueImages = new Map();
+    this.currentDialogueBg = null;
 
     this.onLoadCallback = null;
 
     this.createInteractionPrompt();
     this.createDialogueUI();
     this.loadExclamationMark();
+    this.preloadNpcDialogueAssets(FROG_CONFIG, Array.isArray(FROG_CONFIG.dialogue_lines) ? FROG_CONFIG.dialogue_lines : []);
+    this.preloadNpcDialogueAssets(DUCK_CONFIG, Array.isArray(DUCK_CONFIG.dialogue_lines) ? DUCK_CONFIG.dialogue_lines : []);
   }
 
   getActiveNpcConfig() {
@@ -71,6 +87,30 @@ export class NPCManager {
     return ui.frog_portrait || ui.duck_portrait || ui.portrait || (FROG_CONFIG && FROG_CONFIG.ui && FROG_CONFIG.ui.frog_portrait);
   }
 
+  preloadImage(src) {
+    if (!src || typeof src !== 'string') return;
+    if (this.preloadedDialogueImages.has(src)) return;
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = src;
+    this.preloadedDialogueImages.set(src, img);
+  }
+
+  preloadNpcDialogueAssets(cfg, dialogueLines = []) {
+    if (!cfg || typeof cfg !== 'object') return;
+    const frameDefault = this.getNpcFrameDefault(cfg);
+    const portrait = this.getNpcPortraitSrc(cfg);
+    if (frameDefault) this.preloadImage(frameDefault);
+    if (portrait) this.preloadImage(portrait);
+
+    if (!Array.isArray(dialogueLines)) return;
+    for (const line of dialogueLines) {
+      if (line && typeof line.bg === 'string' && line.bg) {
+        this.preloadImage(line.bg);
+      }
+    }
+  }
+
   getPosition() {
     return this.frog ? this.frog.position : null;
   }
@@ -81,6 +121,63 @@ export class NPCManager {
     if (this.frog && this.frog.position) positions.push(this.frog.position);
     if (this.duck && this.duck.position) positions.push(this.duck.position);
     return positions;
+  }
+
+  getDialogueHistory() {
+    return this.dialogueHistory.map((entry) => ({ ...entry }));
+  }
+
+  setDialogueHistory(history) {
+    if (!Array.isArray(history)) {
+      this.dialogueHistory = [];
+      this.npcDialogueState.frog.progressIndex = 0;
+      this.npcDialogueState.frog.storyCompleted = false;
+      this.npcDialogueState.duck.progressIndex = 0;
+      return;
+    }
+
+    this.dialogueHistory = history
+      .filter((entry) => entry && typeof entry === 'object')
+      .map((entry) => ({
+        npc: typeof entry.npc === 'string' ? entry.npc : 'npc_desconhecido',
+        lineIndex: Number.isFinite(entry.lineIndex) ? entry.lineIndex : 0,
+        text: typeof entry.text === 'string' ? entry.text : '',
+        shownAt: typeof entry.shownAt === 'string' ? entry.shownAt : new Date().toISOString()
+      }));
+
+    const frogEntries = this.dialogueHistory.filter((entry) => entry.npc === 'frog');
+    const lastFrogEntry = frogEntries.length > 0 ? frogEntries[frogEntries.length - 1] : null;
+    const lastStoryIndex = Math.max(0, this.getFrogStoryDialogueLines().length - 1);
+    if (lastFrogEntry && Number.isFinite(lastFrogEntry.lineIndex)) {
+      if (lastFrogEntry.lineIndex >= lastStoryIndex) {
+        this.npcDialogueState.frog.storyCompleted = true;
+        this.npcDialogueState.frog.progressIndex = 0;
+      } else {
+        this.npcDialogueState.frog.storyCompleted = false;
+        this.npcDialogueState.frog.progressIndex = Math.max(0, Math.min(lastStoryIndex, lastFrogEntry.lineIndex));
+      }
+    } else {
+      this.npcDialogueState.frog.storyCompleted = false;
+      this.npcDialogueState.frog.progressIndex = 0;
+    }
+
+    const duckEntries = this.dialogueHistory.filter((entry) => entry.npc === 'duck');
+    const lastDuckEntry = duckEntries.length > 0 ? duckEntries[duckEntries.length - 1] : null;
+    this.npcDialogueState.duck.progressIndex = (lastDuckEntry && Number.isFinite(lastDuckEntry.lineIndex))
+      ? Math.max(0, lastDuckEntry.lineIndex)
+      : 0;
+  }
+
+  setDialogueProvider(provider) {
+    this.dialogueProvider = typeof provider === 'function' ? provider : null;
+  }
+
+  isDialogueActive() {
+    return !!this.isDialogueOpen;
+  }
+
+  shouldBlockInventoryToggle() {
+    return this.isDialogueOpen || this.isPlayerInInteractionRange;
   }
 
   init(onLoadCallback) {
@@ -105,7 +202,7 @@ export class NPCManager {
     this.interactionPrompt.style.border = '2px solid #ffd700';
     this.interactionPrompt.style.zIndex = '2000';
     this.interactionPrompt.style.display = 'none';
-    this.interactionPrompt.innerHTML = 'press <span style="color: #ffd700;">[e]</span> to interact';
+    this.interactionPrompt.innerHTML = `press <span style="color: #ffd700;">[${this.interactionKey}]</span> to interact`;
     document.body.appendChild(this.interactionPrompt);
   }
 
@@ -160,10 +257,10 @@ export class NPCManager {
     // keep dialogue text centered and away from the frame edges
     // (also stays above the hp/stamina hud bars)
     textWrapper.style.left = '50%';
-    // place text higher inside the frame
-    textWrapper.style.bottom = 'clamp(320px, 18vh, 440px)';
+    // place text inside the frame while leaving space for very long lines
+    textWrapper.style.bottom = 'clamp(360px, 18vh, 520px)';
     textWrapper.style.transform = 'translateX(-50%)';
-    textWrapper.style.width = 'clamp(620px, 58vw, 1100px)';
+    textWrapper.style.width = 'clamp(620px, 56vw, 980px)';
     textWrapper.style.boxSizing = 'border-box';
     textWrapper.style.padding = '0 64px';
     textWrapper.style.display = 'flex';
@@ -173,12 +270,12 @@ export class NPCManager {
 
     this.dialogueText = document.createElement('div');
     this.dialogueText.style.color = 'white';
-    this.dialogueText.style.fontSize = '26px';
-    this.dialogueText.style.lineHeight = '2.2';
+    this.dialogueText.style.fontSize = '22px';
+    this.dialogueText.style.lineHeight = '1.6';
     this.dialogueText.style.textShadow = '3px 3px 0px #000';
     this.dialogueText.style.textAlign = 'center';
     this.dialogueText.style.maxWidth = '100%';
-    this.dialogueText.style.whiteSpace = 'normal';
+    this.dialogueText.style.whiteSpace = 'pre-line';
     this.dialogueText.style.wordWrap = 'break-word';
     this.dialogueText.style.overflowWrap = 'break-word';
 
@@ -186,13 +283,19 @@ export class NPCManager {
     this.continuePrompt.style.color = '#ffd700';
     this.continuePrompt.style.fontSize = '18px';
     this.continuePrompt.style.textAlign = 'center';
-    this.continuePrompt.style.marginTop = '80px';
+    this.continuePrompt.style.marginTop = '36px';
     this.continuePrompt.style.textShadow = '2px 2px 0px #000';
     this.continuePrompt.style.visibility = 'hidden';
-    this.continuePrompt.textContent = 'press [e] to continue...';
+    this.continuePrompt.textContent = `press [${this.interactionKey}] to continue...`;
+
+    this.choiceContainer = document.createElement('div');
+    this.choiceContainer.style.display = 'none';
+    this.choiceContainer.style.marginTop = '24px';
+    this.choiceContainer.style.pointerEvents = 'auto';
 
     textWrapper.appendChild(this.dialogueText);
     textWrapper.appendChild(this.continuePrompt);
+    textWrapper.appendChild(this.choiceContainer);
     this.dialogueContainer.appendChild(textWrapper);
     document.body.appendChild(this.dialogueContainer);
   }
@@ -535,6 +638,10 @@ export class NPCManager {
 
     const isActiveInteractable = active.dist < active.cfg.interaction_distance;
 
+    if (this.isDialogueOpen && !isActiveInteractable) {
+      this.closeDialogue({ preserveProgress: true });
+    }
+
     // prompt only when close to active npc and not in dialogue
     if (isActiveInteractable && !this.isDialogueOpen) {
       if (!this.isPlayerInInteractionRange) {
@@ -548,8 +655,9 @@ export class NPCManager {
       }
     }
 
-    const pressedInteract = inputManager && typeof inputManager.was_key_just_pressed === 'function'
-      ? inputManager.was_key_just_pressed('e')
+    const shouldCheckInteract = isActiveInteractable || this.isDialogueOpen;
+    const pressedInteract = shouldCheckInteract && inputManager && typeof inputManager.was_key_just_pressed === 'function'
+      ? inputManager.was_key_just_pressed(this.interactionKey)
       : false;
 
     if (pressedInteract) {
@@ -563,20 +671,47 @@ export class NPCManager {
 
   openDialogue() {
     this.isDialogueOpen = true;
-    this.currentDialogueLine = 0;
+    this.activeChoices = null;
+    this.hideChoices();
 
     // pick dialogue + UI assets based on the active npc
     const cfg = this.getActiveNpcConfig();
     const cfgDialogue = Array.isArray(cfg && cfg.dialogue_lines) ? cfg.dialogue_lines : [];
     const fallbackDialogue = Array.isArray(FROG_CONFIG && FROG_CONFIG.dialogue_lines) ? FROG_CONFIG.dialogue_lines : [];
-    this.dialogueData = cfgDialogue.length > 0 ? cfgDialogue : fallbackDialogue;
+    let dialogueLines = cfgDialogue.length > 0 ? cfgDialogue : fallbackDialogue;
+    this.isUsingFrogStoryDialogue = false;
+
+    if (this.activeNpcKey === 'frog') {
+      const frogState = this.npcDialogueState.frog || { progressIndex: 0, storyCompleted: false };
+      if (frogState.storyCompleted) {
+        dialogueLines = [{ text: 'Please, defeat the slime.', bg: './resources/ui/Lenny.png' }];
+      } else {
+        dialogueLines = this.getFrogStoryDialogueLines();
+        this.isUsingFrogStoryDialogue = true;
+      }
+    } else if (this.dialogueProvider) {
+      const provided = this.dialogueProvider(this.activeNpcKey, dialogueLines);
+      if (Array.isArray(provided) && provided.length > 0) {
+        dialogueLines = provided;
+      }
+    }
+
+    // keep non-story npc lines short enough for the dialogue frame
+    if (!this.isUsingFrogStoryDialogue) {
+      dialogueLines = this.splitLongDialogueLines(dialogueLines, 56);
+    }
+
+    this.dialogueData = dialogueLines;
     this._useLineBackgrounds = cfgDialogue.length > 0;
+    this.preloadNpcDialogueAssets(cfg, dialogueLines);
+    this.currentDialogueLine = this.getStartDialogueLine();
 
     if (this.frogImage) {
       this.frogImage.src = this.getNpcPortraitSrc(cfg);
     }
     if (this.dialogueContainer) {
       const bg = this.getNpcFrameDefault(cfg);
+      this.currentDialogueBg = bg || null;
       if (bg) this.dialogueContainer.style.backgroundImage = `url(${bg})`;
     }
 
@@ -597,6 +732,7 @@ export class NPCManager {
     if (this.dialogueContainer) {
       this.dialogueContainer.style.display = 'block';
       this.dialogueContainer.style.bottom = dialogueBottomOffset;
+      this.dialogueContainer.style.pointerEvents = 'auto';
     }
 
     if (this.frogImage) {
@@ -604,10 +740,103 @@ export class NPCManager {
       this.frogImage.style.transform = 'translate(-180px, -220px)';
     }
 
-    this.showDialogueLine(0);
+    this.showDialogueLine(this.currentDialogueLine);
   }
 
-  closeDialogue() {
+  splitLongDialogueLines(lines, maxChars = 56) {
+    if (!Array.isArray(lines)) return [];
+    const safeMax = Number.isFinite(maxChars) ? Math.max(24, maxChars) : 56;
+    const output = [];
+
+    lines.forEach((line) => {
+      if (!line || typeof line !== 'object') return;
+      const rawText = String(line.text || '').replace(/\s+/g, ' ').trim();
+      if (!rawText) {
+        output.push({ ...line, text: '' });
+        return;
+      }
+
+      // choice lines can have hardcoded "next" indices; keep those intact
+      if (Array.isArray(line.choices) && line.choices.length > 0) {
+        output.push({ ...line, text: rawText });
+        return;
+      }
+
+      const chunks = this.chunkDialogueText(rawText, safeMax);
+      if (chunks.length <= 1) {
+        output.push({ ...line, text: rawText });
+        return;
+      }
+
+      chunks.forEach((textChunk) => {
+        output.push({ ...line, text: textChunk });
+      });
+    });
+
+    return output;
+  }
+
+  chunkDialogueText(text, maxChars = 56) {
+    const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return [''];
+    if (normalized.length <= maxChars) return [normalized];
+
+    const sentenceParts = normalized
+      .split(/(?<=[.!?])\s+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    const baseParts = sentenceParts.length > 1
+      ? sentenceParts
+      : normalized.split(/,\s+/).map((part) => part.trim()).filter(Boolean);
+
+    const chunks = [];
+    let current = '';
+
+    const flushCurrent = () => {
+      if (current) {
+        chunks.push(current);
+        current = '';
+      }
+    };
+
+    const pushWithWordWrap = (part) => {
+      const words = String(part || '').split(/\s+/).filter(Boolean);
+      let line = '';
+      words.forEach((word) => {
+        const candidate = line ? `${line} ${word}` : word;
+        if (candidate.length <= maxChars) {
+          line = candidate;
+          return;
+        }
+        if (line) chunks.push(line);
+        line = word;
+      });
+      if (line) chunks.push(line);
+    };
+
+    baseParts.forEach((part) => {
+      if (part.length > maxChars) {
+        flushCurrent();
+        pushWithWordWrap(part);
+        return;
+      }
+
+      const candidate = current ? `${current} ${part}` : part;
+      if (candidate.length <= maxChars) {
+        current = candidate;
+      } else {
+        flushCurrent();
+        current = part;
+      }
+    });
+
+    flushCurrent();
+    return chunks.length > 0 ? chunks : [normalized];
+  }
+
+  closeDialogue(options = {}) {
+    const preserveProgress = options && options.preserveProgress === true;
     this.isDialogueOpen = false;
     this.isTyping = false;
 
@@ -624,7 +853,14 @@ export class NPCManager {
       this.typewriterTimer = null;
     }
 
+    this.hideChoices();
+
+    if (!preserveProgress) {
+      this.resetDialogueProgressForActiveNpc();
+    }
+
     if (this.dialogueContainer) this.dialogueContainer.style.display = 'none';
+    if (this.dialogueContainer) this.dialogueContainer.style.pointerEvents = 'none';
     if (this.frogImage) this.frogImage.style.display = 'none';
     if (this.continuePrompt) this.continuePrompt.style.visibility = 'hidden';
     if (this.dialogueText) this.dialogueText.textContent = '';
@@ -647,7 +883,12 @@ export class NPCManager {
       if (line && this.dialogueText) {
         this.dialogueText.textContent = String(line.text || '');
       }
-      if (this.continuePrompt) this.continuePrompt.style.visibility = 'visible';
+      this.onLineFullyVisible(line);
+      return;
+    }
+
+    if (this.activeChoices) {
+      this.chooseDialogueOption(0);
       return;
     }
 
@@ -667,16 +908,36 @@ export class NPCManager {
       return;
     }
 
+    if (index === 0) {
+      // notify quest tracker that the player talked to this npc
+      window.dispatchEvent(new CustomEvent('vivarium:npc-talked', { detail: { npcKey: this.activeNpcKey } }));
+    }
+
+    this.dialogueHistory.push({
+      npc: this.activeNpcKey || 'npc_desconhecido',
+      lineIndex: index,
+      text: String(line.text || ''),
+      shownAt: new Date().toISOString()
+    });
+
     // update frame background per line
     if (this.dialogueContainer) {
       const cfg = this.getActiveNpcConfig();
-      const fallbackBg = this.getNpcFrameDefault(cfg);
+      const fallbackBg = this.currentDialogueBg || this.getNpcFrameDefault(cfg);
       const bg = (this._useLineBackgrounds && line.bg) ? line.bg : fallbackBg;
-      this.dialogueContainer.style.backgroundImage = `url(${bg})`;
+      if (bg) {
+        this.dialogueContainer.style.backgroundImage = `url(${bg})`;
+        this.currentDialogueBg = bg;
+      }
     }
 
     if (this.dialogueText) this.dialogueText.textContent = '';
     if (this.continuePrompt) this.continuePrompt.style.visibility = 'hidden';
+    this.hideChoices();
+
+    if (this.npcDialogueState[this.activeNpcKey]) {
+      this.npcDialogueState[this.activeNpcKey].progressIndex = index;
+    }
 
     this.safePlay(this.frogSpeakSound);
 
@@ -694,7 +955,7 @@ export class NPCManager {
 
       if (i >= text.length) {
         this.isTyping = false;
-        if (this.continuePrompt) this.continuePrompt.style.visibility = 'visible';
+        this.onLineFullyVisible(line);
 
         // stop the talk sound when the message is fully displayed
         this.stopAudio(this.frogSpeakSound);
@@ -705,6 +966,136 @@ export class NPCManager {
     };
 
     typeNext(1);
+  }
+
+  getFrogStoryDialogueLines() {
+    return [
+      { text: 'Hey there!', bg: './resources/ui/Text_Frog.png' },
+      { text: "Uh... I don't think I've ever seen a creature like you before.", bg: './resources/ui/Text_Frog.png' },
+      { text: "Either way... I'm Lenny. Lenny the frog ^^", bg: './resources/ui/Lenny.png' },
+      { text: 'Could you perhaps help me and my friends?', bg: './resources/ui/Lenny.png' },
+      {
+        text: 'I have something... quite bold... to ask you..',
+        bg: './resources/ui/Lenny.png',
+        choices: [
+          { label: 'yes', next: 5 },
+          { label: 'tell me more about it', next: 5 }
+        ]
+      },
+      { text: 'There is a half-goat, half-demon creature: Lilith.', bg: './resources/ui/Lenny.png' },
+      { text: 'She terrorizes the citizens of Vivarium.', bg: './resources/ui/Lenny.png' },
+      { text: 'We are afraid to go near her lair. Many other animals have faced her wrath.', bg: './resources/ui/Lenny.png' },
+      { text: "I don't know why she is like this or why she is doing this...", bg: './resources/ui/Lenny.png' },
+      { text: "I know it's rude to ask a stranger this.", bg: './resources/ui/Lenny.png' },
+      { text: "But I felt this from the moment I laid eyes on you:", bg: './resources/ui/Lenny.png' },
+      { text: 'you will be able to defeat her.', bg: './resources/ui/Lenny.png' },
+      {
+        text: 'Could you do it for us?',
+        bg: './resources/ui/Lenny.png',
+        choices: [{ label: 'yes', next: 13 }]
+      },
+      { text: 'You will likely have to defeat her pet first - the slime.', bg: './resources/ui/Lenny.png' },
+      { text: 'She stays resting for most of the time.', bg: './resources/ui/Lenny.png' },
+      { text: "You won't be able to wake her if you don't defeat her pet guard.", bg: './resources/ui/Lenny.png' },
+      { text: 'Defeat him 3 times and bring me what you got from him.', bg: './resources/ui/Lenny.png' }
+    ];
+  }
+
+  getStartDialogueLine() {
+    if (this.activeNpcKey === 'frog') {
+      const frogState = this.npcDialogueState.frog || { progressIndex: 0, storyCompleted: false };
+      if (frogState.storyCompleted) return 0;
+      const maxIndex = Math.max(0, this.dialogueData.length - 1);
+      const saved = Number.isFinite(frogState.progressIndex) ? frogState.progressIndex : 0;
+      return Math.max(0, Math.min(saved, maxIndex));
+    }
+
+    const npcState = this.npcDialogueState[this.activeNpcKey];
+    if (!npcState) return 0;
+    const maxIndex = Math.max(0, this.dialogueData.length - 1);
+    const saved = Number.isFinite(npcState.progressIndex) ? npcState.progressIndex : 0;
+    return Math.max(0, Math.min(saved, maxIndex));
+  }
+
+  onLineFullyVisible(line) {
+    if (!line) {
+      if (this.continuePrompt) this.continuePrompt.style.visibility = 'visible';
+      return;
+    }
+
+    if (Array.isArray(line.choices) && line.choices.length > 0) {
+      this.showChoices(line.choices);
+      return;
+    }
+
+    if (this.continuePrompt) this.continuePrompt.style.visibility = 'visible';
+  }
+
+  showChoices(choices) {
+    if (!this.choiceContainer) return;
+    this.activeChoices = choices;
+    if (this.continuePrompt) this.continuePrompt.style.visibility = 'hidden';
+    this.choiceContainer.innerHTML = '';
+    this.choiceContainer.style.display = 'flex';
+    this.choiceContainer.style.gap = '14px';
+    this.choiceContainer.style.justifyContent = 'center';
+    this.choiceContainer.style.flexWrap = 'wrap';
+
+    for (let i = 0; i < choices.length; i++) {
+      const choice = choices[i];
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = String(choice.label || `option ${i + 1}`);
+      btn.style.background = 'rgba(0, 0, 0, 0.72)';
+      btn.style.border = '2px solid #ffd700';
+      btn.style.color = '#ffd700';
+      btn.style.padding = '10px 14px';
+      btn.style.fontFamily = '"Press Start 2P", monospace';
+      btn.style.fontSize = '12px';
+      btn.style.cursor = 'pointer';
+      btn.style.textTransform = 'lowercase';
+      btn.style.pointerEvents = 'auto';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.chooseDialogueOption(i);
+      });
+      this.choiceContainer.appendChild(btn);
+    }
+  }
+
+  hideChoices() {
+    this.activeChoices = null;
+    if (!this.choiceContainer) return;
+    this.choiceContainer.style.display = 'none';
+    this.choiceContainer.innerHTML = '';
+  }
+
+  chooseDialogueOption(choiceIndex) {
+    if (!this.isDialogueOpen) return;
+    if (!Array.isArray(this.activeChoices)) return;
+    const choice = this.activeChoices[choiceIndex];
+    if (!choice) return;
+
+    this.hideChoices();
+    this.currentDialogueLine = Number.isFinite(choice.next) ? choice.next : (this.currentDialogueLine + 1);
+    if (this.currentDialogueLine >= this.dialogueData.length) {
+      this.closeDialogue();
+      return;
+    }
+    this.showDialogueLine(this.currentDialogueLine);
+  }
+
+  resetDialogueProgressForActiveNpc() {
+    const state = this.npcDialogueState[this.activeNpcKey];
+    if (!state) return;
+
+    if (this.activeNpcKey === 'frog' && this.isUsingFrogStoryDialogue) {
+      state.storyCompleted = true;
+      state.progressIndex = 0;
+      return;
+    }
+
+    state.progressIndex = 0;
   }
 
   safePlay(audio) {

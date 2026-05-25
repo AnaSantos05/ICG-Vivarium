@@ -1,5 +1,6 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.118.1/build/three.module.js';
 import { SCENE_CONFIG, CAMERA_CONFIG } from '../config/gameConfig.js';
+import { GameOverScreen } from '../ui/GameOverScreen.js';
 
 export class SceneManager {
   constructor() {
@@ -16,6 +17,12 @@ export class SceneManager {
     this.scene = new THREE.Scene();
     // no scene background so the sky dome can be visible
     this.scene.background = null;
+    const fogColor = typeof SCENE_CONFIG.FOG_COLOR === 'number' ? SCENE_CONFIG.FOG_COLOR : 0x000000;
+    if (Number.isFinite(SCENE_CONFIG.FOG_DENSITY)) {
+      this.scene.fog = new THREE.FogExp2(fogColor, SCENE_CONFIG.FOG_DENSITY);
+    } else if (Number.isFinite(SCENE_CONFIG.FOG_NEAR) && Number.isFinite(SCENE_CONFIG.FOG_FAR)) {
+      this.scene.fog = new THREE.Fog(fogColor, SCENE_CONFIG.FOG_NEAR, SCENE_CONFIG.FOG_FAR);
+    }
     console.log('scene created');
 
     // create camera
@@ -37,7 +44,7 @@ export class SceneManager {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     // transparent clear so body background stays behind
-    this.renderer.setClearColor(0x000000, 0);
+    this.renderer.setClearColor(fogColor, 1);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -84,6 +91,24 @@ export class SceneManager {
       const isVisible = this.frustum.intersectsSphere(boundingSphere);
       obj.visible = isVisible;
     }
+  }
+
+  handleGameOver() {
+    const gameOverScreen = new GameOverScreen();
+
+    gameOverScreen.show({
+      onRetry: () => {
+        // Reload the last save
+        if (window.saveManager) {
+          window.saveManager.loadLastSave();
+        }
+        this.startGame();
+      },
+      onMenu: () => {
+        // Return to the main menu
+        this.loadScene('MainMenu');
+      },
+    });
   }
 
   getScene() {

@@ -17,7 +17,7 @@ export class BossUIManager {
     // main container
     this.container = document.createElement('div');
     this.container.style.position = 'fixed';
-    this.container.style.top = '20px';
+    this.container.style.top = '44px';
     this.container.style.left = '50%';
     this.container.style.transform = 'translateX(-50%)';
     this.container.style.display = 'none';
@@ -47,7 +47,7 @@ export class BossUIManager {
     name_container.appendChild(skull_img);
 
     this.nameText = document.createElement('div');
-    this.nameText.textContent = 'DRAJAK';
+    this.nameText.textContent = 'SLIME';
     this.nameText.style.position = 'relative';
     this.nameText.style.color = '#FF4444';
     this.nameText.style.fontFamily = '"Times New Roman", serif';
@@ -135,6 +135,12 @@ export class BossUIManager {
   update(isNearBoss) {
     if (isNearBoss) this.show();
     else this.hide();
+  }
+
+  setBossName(name) {
+    if (!this.nameText) return;
+    const safeName = String(name || '').trim();
+    this.nameText.textContent = (safeName || 'boss').toUpperCase();
   }
 
   // left here for later: clip the bar to match a health percentage

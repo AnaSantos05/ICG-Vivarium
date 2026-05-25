@@ -16,13 +16,22 @@ export class CombatEngine {
     this.state = {
       is_attacking: false,
       current_attack: null,
+      current_attack_started_at: 0,
+      current_attack_unlock_at: 0,
       next_q_time: 0,
       next_r_time: 0,
-      last_r_target: null
+      last_r_target: null,
+      active_cooldown_attack: null,
+      active_cooldown_start: 0,
+      active_cooldown_end: 0,
+      active_cooldown_duration: 0
     };
 
     // simple vfx list (custom meshes)
     this.active_vfx = [];
+
+    // queued combat events consumed by higher level systems
+    this.pending_attack_events = [];
   }
 
   bind_player({ player, animations, get_current_action, set_current_action, fade_to_action }) {
@@ -37,15 +46,41 @@ export class CombatEngine {
     return !!this.state.is_attacking;
   }
 
+  release_attack_lock() {
+    this.state.is_attacking = false;
+    this.state.current_attack = null;
+    this.state.current_attack_started_at = 0;
+    this.state.current_attack_unlock_at = 0;
+    if (typeof this.fade_to_action === 'function') {
+      this.fade_to_action('idle', 0.15);
+    }
+  }
+
   on_animation_finished(e) {
     if (!e || !e.action || !this.state.is_attacking) return;
     if (!this.animations || typeof this.fade_to_action !== 'function') return;
 
     const attack_action = this.animations[this.state.current_attack];
     if (attack_action && e.action === attack_action) {
-      this.state.is_attacking = false;
-      this.state.current_attack = null;
-      this.fade_to_action('idle', 0.15);
+      this.release_attack_lock();
+    }
+  }
+
+  ensure_attack_not_stuck(now) {
+    if (!this.state.is_attacking || !this.animations) return;
+
+    const attackName = this.state.current_attack;
+    const action = attackName ? this.animations[attackName] : null;
+    const startedAt = Number(this.state.current_attack_started_at || 0);
+    const unlockAt = Number(this.state.current_attack_unlock_at || 0);
+
+    // Give the action a tiny grace period before checking isRunning.
+    const canCheckRunning = startedAt > 0 && (now - startedAt) >= 0.12;
+    const stoppedEarly = canCheckRunning && action && typeof action.isRunning === 'function' && !action.isRunning();
+    const timedOut = unlockAt > 0 && now >= unlockAt;
+
+    if (stoppedEarly || timedOut || !action) {
+      this.release_attack_lock();
     }
   }
 
@@ -56,14 +91,19 @@ export class CombatEngine {
 
   update_combat(delta, input_manager, boss_manager) {
     if (!this.player || !this.animations) return;
-    if (!input_manager || typeof input_manager.was_key_just_pressed !== 'function') return;
-
     const now = Date.now() / 1000;
+    this.ensure_attack_not_stuck(now);
+    if (!input_manager || typeof input_manager.was_key_just_pressed !== 'function') return;
 
     // q -> tail attack (shockwave ring)
     if (input_manager.was_key_just_pressed('q') && !this.state.is_attacking && now >= this.state.next_q_time) {
       this.perform_attack('attack_tail');
-      this.state.next_q_time = now + COMBAT_CONFIG.q_cooldown;
+      const duration = Number(COMBAT_CONFIG.q_cooldown || 0);
+      this.state.next_q_time = now + duration;
+      this.state.active_cooldown_attack = 'q';
+      this.state.active_cooldown_start = now;
+      this.state.active_cooldown_end = now + duration;
+      this.state.active_cooldown_duration = duration;
       return;
     }
 
@@ -71,8 +111,41 @@ export class CombatEngine {
     if (input_manager.was_key_just_pressed('r') && !this.state.is_attacking && now >= this.state.next_r_time) {
       this.state.last_r_target = this.get_boss_target_point(boss_manager);
       this.perform_attack('attack_paws');
-      this.state.next_r_time = now + COMBAT_CONFIG.r_cooldown;
+      const duration = Number(COMBAT_CONFIG.r_cooldown || 0);
+      this.state.next_r_time = now + duration;
+      this.state.active_cooldown_attack = 'r';
+      this.state.active_cooldown_start = now;
+      this.state.active_cooldown_end = now + duration;
+      this.state.active_cooldown_duration = duration;
     }
+  }
+
+  get_attack_cooldown_state() {
+    const now = Date.now() / 1000;
+    const end = Number(this.state.active_cooldown_end || 0);
+    const start = Number(this.state.active_cooldown_start || 0);
+    const duration = Math.max(0.0001, Number(this.state.active_cooldown_duration || 0));
+    const isActive = end > now;
+
+    if (!isActive) {
+      return {
+        active: false,
+        progress: 1,
+        remaining: 0,
+        duration: 0,
+        attack: this.state.active_cooldown_attack
+      };
+    }
+
+    const elapsed = Math.max(0, now - start);
+    const progress = Math.max(0, Math.min(1, elapsed / duration));
+    return {
+      active: true,
+      progress,
+      remaining: Math.max(0, end - now),
+      duration,
+      attack: this.state.active_cooldown_attack
+    };
   }
 
   get_boss_target_point(boss_manager) {
@@ -110,9 +183,31 @@ export class CombatEngine {
     action.reset();
     action.play();
 
+    const clip = typeof action.getClip === 'function' ? action.getClip() : null;
+    const rawDuration = Number(clip && clip.duration ? clip.duration : 0.75);
+    const safeDuration = Math.max(0.35, rawDuration);
+    // Unlock timeout protects against rare missing `finished` events.
+    const now = Date.now() / 1000;
+    this.state.current_attack_started_at = now;
+    this.state.current_attack_unlock_at = now + safeDuration + 0.25;
+
     if (typeof this.set_current_action === 'function') {
       this.set_current_action(action);
     }
+
+    const forward = new THREE.Vector3(
+      Math.sin(this.player.rotation.y),
+      0,
+      Math.cos(this.player.rotation.y)
+    ).normalize();
+
+    this.pending_attack_events.push({
+      attack: anim_name,
+      timestamp: performance.now() * 0.001,
+      origin: this.player.position.clone(),
+      forward,
+      rotationY: this.player.rotation.y
+    });
 
     // spawn vfx slightly after the motion starts
     if (anim_name === 'attack_tail') {
@@ -253,5 +348,15 @@ export class CombatEngine {
         this.active_vfx.splice(i, 1);
       }
     }
+  }
+
+  consume_attack_events() {
+    if (!Array.isArray(this.pending_attack_events) || this.pending_attack_events.length === 0) {
+      return [];
+    }
+
+    const events = this.pending_attack_events.slice();
+    this.pending_attack_events.length = 0;
+    return events;
   }
 }

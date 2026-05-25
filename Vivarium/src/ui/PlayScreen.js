@@ -3,10 +3,12 @@ export class PlayScreen {
     this.playContainer = null;
     this.videoElement = null;
     this.onPlayClick = null;
+    this.isHiding = false;
   }
 
   show(onPlayClick) {
     this.onPlayClick = onPlayClick;
+    this.isHiding = false;
     this.createPlayUI();
   }
 
@@ -111,6 +113,10 @@ export class PlayScreen {
   }
 
   hide() {
+    if (!this.playContainer) return;
+    if (this.isHiding) return;
+    this.isHiding = true;
+
     this.playContainer.style.transition = 'opacity 0.5s ease-out';
     this.playContainer.style.opacity = '0';
 

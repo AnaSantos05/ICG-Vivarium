@@ -5,7 +5,10 @@ export class AudioManager {
       forestMusic: null,
       forestAmbience: null,
       bossMusic: null,
-      foxSound: null
+      foxSound: null,
+      bossGrowl: null,
+      levelUp: null,
+      xpGain: null
     };
 
     this.menuMusicReady = false;
@@ -14,31 +17,98 @@ export class AudioManager {
     this.isBossActive = false;
     this.fadeInterval = null;
     this.fadeDuration = 2000; // 2 seconds fade
+
+    this.baseVolumes = {
+      menuMusic: 0.5,
+      forestMusic: 0.18,
+      forestAmbience: 0.22,
+      bossMusic: 0.5,
+      foxSound: 0.6,
+      bossGrowl: 0.75,
+      levelUp: 0.7,
+      xpGain: 0.7
+    };
+    this.volumeMix = {
+      ambient: 1,
+      sfx: 1,
+      combat: 1,
+      muted: false
+    };
   }
 
   init() {
     this.sounds.menuMusic = new Audio('./resources/sounds/intro/forest-lullaby-vivarium.mp3');
     this.sounds.menuMusic.loop = true;
-    this.sounds.menuMusic.volume = 0.5;
+    this.sounds.menuMusic.volume = this.getTargetVolume('menuMusic');
 
     this.sounds.forestMusic = new Audio('./resources/sounds/gameplay/moonlit-forest.mp3');
     this.sounds.forestMusic.loop = true;
-    this.sounds.forestMusic.volume = 0.18;
+    this.sounds.forestMusic.volume = this.getTargetVolume('forestMusic');
 
     this.sounds.forestAmbience = new Audio('./resources/sounds/gameplay/sfx/forest-ambience.mp3');
     this.sounds.forestAmbience.loop = true;
-    this.sounds.forestAmbience.volume = 0.22;
+    this.sounds.forestAmbience.volume = this.getTargetVolume('forestAmbience');
 
     // battle music (yep, the dramatic one)
     this.sounds.bossMusic = new Audio('./resources/sounds/bosses/one.mp3');
     this.sounds.bossMusic.loop = true;
-    this.sounds.bossMusic.volume = 0.5;
+    this.sounds.bossMusic.volume = this.getTargetVolume('bossMusic');
 
     this.sounds.foxSound = new Audio('./resources/sounds/gameplay/sfx/fox-sound.mp3');
     this.sounds.foxSound.loop = false;
-    this.sounds.foxSound.volume = 0.6;
+    this.sounds.foxSound.volume = this.getTargetVolume('foxSound');
+
+    this.sounds.bossGrowl = new Audio('./resources/sounds/gameplay/sfx/everything-else/boss-roar.mp3');
+    this.sounds.bossGrowl.loop = false;
+    this.sounds.bossGrowl.volume = this.getTargetVolume('bossGrowl');
+
+    this.sounds.levelUp = new Audio('./resources/sounds/gameplay/sfx/everything-else/level-up.mp3');
+    this.sounds.levelUp.loop = false;
+    this.sounds.levelUp.volume = this.getTargetVolume('levelUp');
+
+    this.sounds.xpGain = new Audio('./resources/sounds/gameplay/sfx/everything-else/xp-gain.mp3');
+    this.sounds.xpGain.loop = false;
+    this.sounds.xpGain.volume = this.getTargetVolume('xpGain');
 
     console.log('audio manager ready');
+  }
+
+  getTargetVolume(soundName) {
+    const base = Number(this.baseVolumes[soundName] || 0);
+    if (this.volumeMix.muted) return 0;
+
+    if (soundName === 'bossMusic') return base * this.volumeMix.combat;
+    if (soundName === 'forestMusic' || soundName === 'forestAmbience' || soundName === 'menuMusic') {
+      return base * this.volumeMix.ambient;
+    }
+    return base * this.volumeMix.sfx;
+  }
+
+  setVolumeMix(next = {}) {
+    if (Number.isFinite(next.ambient)) this.volumeMix.ambient = Math.max(0, Math.min(1, next.ambient));
+    if (Number.isFinite(next.sfx)) this.volumeMix.sfx = Math.max(0, Math.min(1, next.sfx));
+    if (Number.isFinite(next.combat)) this.volumeMix.combat = Math.max(0, Math.min(1, next.combat));
+    if (typeof next.muted === 'boolean') this.volumeMix.muted = next.muted;
+    this.refreshMixVolumes();
+  }
+
+  getVolumeMix() {
+    return { ...this.volumeMix };
+  }
+
+  refreshMixVolumes() {
+    if (this.sounds.menuMusic) this.sounds.menuMusic.volume = this.getTargetVolume('menuMusic');
+    if (this.sounds.foxSound) this.sounds.foxSound.volume = this.getTargetVolume('foxSound');
+    if (this.sounds.bossGrowl) this.sounds.bossGrowl.volume = this.getTargetVolume('bossGrowl');
+    if (this.sounds.levelUp) this.sounds.levelUp.volume = this.getTargetVolume('levelUp');
+    if (this.sounds.xpGain) this.sounds.xpGain.volume = this.getTargetVolume('xpGain');
+
+    if (this.isBossActive) {
+      if (this.sounds.bossMusic) this.sounds.bossMusic.volume = this.getTargetVolume('bossMusic');
+    } else {
+      if (this.sounds.forestMusic) this.sounds.forestMusic.volume = this.getTargetVolume('forestMusic');
+      if (this.sounds.forestAmbience) this.sounds.forestAmbience.volume = this.getTargetVolume('forestAmbience');
+    }
   }
 
   playMenuMusic() {
@@ -171,13 +241,6 @@ export class AudioManager {
     const stepDuration = duration / steps;
     let currentStep = 0;
 
-    // target volumes tuned to match existing mix
-    const targetVolumes = {
-      forestMusic: 0.18,
-      forestAmbience: 0.22,
-      bossMusic: 0.5
-    };
-
     const fadeOutArray = Array.isArray(fadeOutSounds) ? fadeOutSounds : [fadeOutSounds];
     const fadeInArray = Array.isArray(fadeInSounds) ? fadeInSounds : [fadeInSounds];
 
@@ -194,10 +257,10 @@ export class AudioManager {
 
       // fade in
       fadeInArray.forEach((sound) => {
-        let targetVol = 0.5;
-        if (sound === this.sounds.forestMusic) targetVol = targetVolumes.forestMusic;
-        if (sound === this.sounds.forestAmbience) targetVol = targetVolumes.forestAmbience;
-        if (sound === this.sounds.bossMusic) targetVol = targetVolumes.bossMusic;
+        let targetVol = this.getTargetVolume('bossMusic');
+        if (sound === this.sounds.forestMusic) targetVol = this.getTargetVolume('forestMusic');
+        if (sound === this.sounds.forestAmbience) targetVol = this.getTargetVolume('forestAmbience');
+        if (sound === this.sounds.bossMusic) targetVol = this.getTargetVolume('bossMusic');
         sound.volume = targetVol * progress;
       });
 
@@ -209,9 +272,9 @@ export class AudioManager {
         fadeOutArray.forEach((sound) => sound.pause());
 
         fadeInArray.forEach((sound) => {
-          if (sound === this.sounds.forestMusic) sound.volume = targetVolumes.forestMusic;
-          if (sound === this.sounds.forestAmbience) sound.volume = targetVolumes.forestAmbience;
-          if (sound === this.sounds.bossMusic) sound.volume = targetVolumes.bossMusic;
+          if (sound === this.sounds.forestMusic) sound.volume = this.getTargetVolume('forestMusic');
+          if (sound === this.sounds.forestAmbience) sound.volume = this.getTargetVolume('forestAmbience');
+          if (sound === this.sounds.bossMusic) sound.volume = this.getTargetVolume('bossMusic');
         });
       }
     }, stepDuration);
@@ -222,5 +285,15 @@ export class AudioManager {
     console.log('playing fox sound');
     this.sounds.foxSound.currentTime = 0;
     this.sounds.foxSound.play().catch((e) => console.log('fox sound blocked', e));
+  }
+
+  play(soundName) {
+    const sound = this.sounds[soundName];
+    if (sound) {
+      sound.currentTime = 0;
+      sound.play().catch((e) => console.log(`Sound ${soundName} playback blocked`, e));
+    } else {
+      console.warn(`Sound ${soundName} not found in AudioManager.`);
+    }
   }
 }

@@ -174,7 +174,7 @@ export class PlayerManager {
     this.current_action = next_action;
   }
 
-  update(delta, input_manager, vegetation_manager, boss_manager) {
+  update(delta, input_manager, vegetation_manager, boss_manager, door_manager) {
     if (!this.fox || !this.mixer) return;
 
     this.mixer.update(delta);
@@ -239,10 +239,23 @@ export class PlayerManager {
       }
     }
 
-    // stop movement if we hit a tree or bush
-    if (vegetation_manager && vegetation_manager.check_collision(this.fox.position.x, this.fox.position.z)) {
+    // stop movement if we hit a tree or bush (mesh vs mesh)
+    if (vegetation_manager && typeof vegetation_manager.check_collision_mesh === 'function') {
+      if (vegetation_manager.check_collision_mesh(this.fox)) {
+        this.fox.position.x = old_x;
+        this.fox.position.z = old_z;
+      }
+    } else if (vegetation_manager && vegetation_manager.check_collision(this.fox.position.x, this.fox.position.z)) {
+      // fallback to old distance check if needed
       this.fox.position.x = old_x;
       this.fox.position.z = old_z;
+    }
+
+    if (door_manager && typeof door_manager.check_collision === 'function') {
+      if (door_manager.check_collision(this.fox.position.x, this.fox.position.z)) {
+        this.fox.position.x = old_x;
+        this.fox.position.z = old_z;
+      }
     }
 
     if (this.terrain_manager && typeof this.terrain_manager.getTerrainHeight === 'function') {
@@ -302,5 +315,43 @@ export class PlayerManager {
   get_rotation_y() {
     if (!this.fox) return 0;
     return this.fox.rotation.y;
+  }
+
+  set_position(position) {
+    if (!this.fox || !position || typeof position !== 'object') return;
+    if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) return;
+
+    this.fox.position.x = position.x;
+    this.fox.position.z = position.z;
+
+    if (Number.isFinite(position.y)) {
+      this.fox.position.y = position.y;
+    } else if (this.terrain_manager && typeof this.terrain_manager.getTerrainHeight === 'function') {
+      this.fox.position.y = this.terrain_manager.getTerrainHeight(position.x, position.z);
+    }
+
+    if (Number.isFinite(position.rotationY)) {
+      this.fox.rotation.y = position.rotationY;
+    }
+  }
+
+  consume_combat_attack_events() {
+    if (!this.combat_engine || typeof this.combat_engine.consume_attack_events !== 'function') {
+      return [];
+    }
+    return this.combat_engine.consume_attack_events();
+  }
+
+  get_attack_cooldown_state() {
+    if (!this.combat_engine || typeof this.combat_engine.get_attack_cooldown_state !== 'function') {
+      return {
+        active: false,
+        progress: 1,
+        remaining: 0,
+        duration: 0,
+        attack: null
+      };
+    }
+    return this.combat_engine.get_attack_cooldown_state();
   }
 }

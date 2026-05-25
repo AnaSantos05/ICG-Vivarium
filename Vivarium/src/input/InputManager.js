@@ -6,6 +6,7 @@ export class InputManager {
       s: false,
       d: false,
       e: false,
+      t: false,
       shift: false,
       q: false,
       r: false,
@@ -17,11 +18,14 @@ export class InputManager {
 
     this.keyJustPressed = {
       e: false,
+      t: false,
       q: false,
       r: false
     };
 
     this.arrow_key_speed = 0.04;
+
+    this.sprintBlocked = false;
 
     this.setup_event_listeners();
   }
@@ -73,7 +77,11 @@ export class InputManager {
   }
 
   is_sprinting() {
-    return this.keys.shift;
+    return this.keys.shift && !this.sprintBlocked;
+  }
+
+  setSprintBlocked(blocked) {
+    this.sprintBlocked = blocked === true;
   }
 
   get_arrow_rotation_delta() {

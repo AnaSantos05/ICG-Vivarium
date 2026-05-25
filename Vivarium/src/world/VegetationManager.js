@@ -45,6 +45,33 @@ export class VegetationManager {
   }
 
   load_trees() {
+    const load_tree_asset = (cfg, on_loaded, on_error, override_model = null) => {
+      const selected_model = override_model || cfg.model;
+      const model = String(selected_model || '').toLowerCase();
+      const is_fbx = model.endsWith('.fbx');
+
+      if (is_fbx) {
+        const loader = new FBXLoader();
+        loader.setPath(cfg.path);
+        loader.load(
+          selected_model,
+          (fbx) => on_loaded(fbx),
+          undefined,
+          (err) => on_error(err)
+        );
+        return;
+      }
+
+      const loader = new GLTFLoader();
+      loader.setPath(cfg.path);
+      loader.load(
+        selected_model,
+        (gltf) => on_loaded(gltf.scene),
+        undefined,
+        (err) => on_error(err)
+      );
+    };
+
     const applyMaterialTweaks = (material, cfg) => {
       const mult = typeof cfg.color_multiplier === 'number' ? cfg.color_multiplier : 1;
       if (material && material.color && mult !== 1) {
@@ -65,6 +92,23 @@ export class VegetationManager {
           applyMaterialTweaks(child.material, cfg);
         }
       });
+    };
+
+    const applyScaleFromConfig = (obj, cfg) => {
+      const baseScale = Number.isFinite(cfg && cfg.scale) ? cfg.scale : 1;
+      obj.scale.setScalar(baseScale);
+
+      const desiredHeight = Number.isFinite(cfg && cfg.desired_height) ? cfg.desired_height : null;
+      if (!desiredHeight || desiredHeight <= 0) return;
+
+      obj.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(obj);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+
+      if (!Number.isFinite(size.y) || size.y <= 0.0001) return;
+      const factor = desiredHeight / size.y;
+      obj.scale.multiplyScalar(factor);
     };
 
     const isTooClose = (x, z, radius) => {
@@ -113,17 +157,28 @@ export class VegetationManager {
       obj.position.y += desiredBottomY - bottomY;
     };
 
-    const loaderA = new GLTFLoader();
-    loaderA.setPath(TREE_CONFIG.path);
+    const buildTreeCollider = (tree, cfg, variant, fallbackX, fallbackZ) => {
+      tree.updateMatrixWorld(true);
+      const bbox = new THREE.Box3().setFromObject(tree);
+      const center = new THREE.Vector3(fallbackX, 0, fallbackZ);
 
-    loaderA.load(
-      TREE_CONFIG.model,
-      (gltfA) => {
-        const baseA = gltfA.scene;
+      if (!bbox.isEmpty()) {
+        bbox.getCenter(center);
+      }
+
+      return {
+        x: center.x,
+        z: center.z,
+        radius: cfg.collision_radius,
+        kind: 'tree',
+        variant
+      };
+    };
+
+    load_tree_asset(
+      TREE_CONFIG,
+      (baseA) => {
         setupBase(baseA, TREE_CONFIG);
-
-        const loaderB = new GLTFLoader();
-        loaderB.setPath(TREE2_CONFIG.path);
 
         const afterLoadB = (baseB) => {
           const countA = Math.max(0, TREE_CONFIG.count | 0);
@@ -139,7 +194,7 @@ export class VegetationManager {
             if (pickB) remainingB--; else remainingA--;
 
             const tree = base.clone(true);
-            tree.scale.setScalar(cfg.scale);
+            applyScaleFromConfig(tree, cfg);
             tree.rotation.y = Math.random() * Math.PI * 2;
 
             const radius = cfg.collision_radius;
@@ -154,28 +209,44 @@ export class VegetationManager {
               this.scene_manager.registerCullableObjects([tree]);
             }
 
-            this.colliders.push({ x, z, radius, kind: 'tree', variant: pickB ? 'tree2' : 'tree1' });
+            const variant = pickB ? 'tree2' : 'tree1';
+            this.colliders.push(buildTreeCollider(tree, cfg, variant, x, z));
             this.trees_loaded++;
           }
 
           this.check_all_loaded();
         };
 
-        loaderB.load(
-          TREE2_CONFIG.model,
-          (gltfB) => {
-            const baseB = gltfB.scene;
+        load_tree_asset(
+          TREE2_CONFIG,
+          (baseB) => {
             setupBase(baseB, TREE2_CONFIG);
             afterLoadB(baseB);
           },
-          undefined,
           (err) => {
+            const fallbackModel = TREE2_CONFIG && TREE2_CONFIG.fallback_model;
+            if (typeof fallbackModel === 'string' && fallbackModel.trim().length > 0) {
+              console.warn('TREE2 principal falhou. a tentar fallback:', TREE2_CONFIG.path + fallbackModel, err);
+              load_tree_asset(
+                TREE2_CONFIG,
+                (fallbackBaseB) => {
+                  setupBase(fallbackBaseB, TREE2_CONFIG);
+                  afterLoadB(fallbackBaseB);
+                },
+                (fallbackErr) => {
+                  console.warn('Fallback TREE2 falhou; usando apenas TREE_CONFIG:', TREE2_CONFIG.path + fallbackModel, fallbackErr);
+                  afterLoadB(null);
+                },
+                fallbackModel
+              );
+              return;
+            }
+
             console.warn('Failed to load TREE2 model; using only TREE_CONFIG:', TREE2_CONFIG.path + TREE2_CONFIG.model, err);
             afterLoadB(null);
           }
         );
       },
-      undefined,
       (err) => {
         console.error('Failed to load tree model:', TREE_CONFIG.path + TREE_CONFIG.model, err);
         // don't block the game if trees fail

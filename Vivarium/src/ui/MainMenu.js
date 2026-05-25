@@ -1,15 +1,22 @@
+import { CreditsRollScreen } from './CreditsRollScreen.js';
+
 export class MainMenu {
   constructor() {
     this.menuContainer = null;
     this.videoElement = null;
     this.audioElement = null;
+    this.creditsRoll = null;
     this.onNewGame = null;
     this.onLoadGame = null;
     this.onQuit = null;
+    this.isHiding = false;
+    this.actionLocked = false;
   }
 
   // called from main.js after play: builds the full menu
   init() {
+    this.isHiding = false;
+    this.actionLocked = false;
     this.createMenuUI();
     // music is handled by audiomanager in this project,
     // so we don't call setupaudio() here to avoid double audio.
@@ -172,7 +179,17 @@ export class MainMenu {
   }
 
   showCredits() {
-    alert('Vivarium - A Fox Adventure\n\nDeveloped by Rita\n\n© 2026');
+    if (!this.creditsRoll) {
+      this.creditsRoll = new CreditsRollScreen({
+        creditsUrl: './resources/credits/credits.txt',
+        title: 'Vivarium Credits',
+        autoClose: true,
+        speed: 38
+      });
+    }
+    this.creditsRoll.show({
+      autoClose: true
+    });
   }
 
   createMenuButton(text, onClick) {
@@ -231,6 +248,8 @@ export class MainMenu {
   }
 
   handleNewGame() {
+    if (this.actionLocked) return;
+    this.actionLocked = true;
     this.hide(() => {
       if (this.onNewGame) {
         this.onNewGame();
@@ -239,7 +258,16 @@ export class MainMenu {
   }
 
   handleLoadGame() {
-    alert('Load Game - Coming soon!');
+    if (this.actionLocked) return;
+    this.actionLocked = true;
+    this.hide(() => {
+      if (this.onLoadGame) {
+        this.onLoadGame();
+        return;
+      }
+
+      alert('load game ainda nao esta ligado.');
+    });
   }
 
   handleQuit() {
@@ -251,6 +279,8 @@ export class MainMenu {
 
   hide(callback) {
     if (!this.menuContainer) return;
+    if (this.isHiding) return;
+    this.isHiding = true;
 
     this.menuContainer.style.transition = 'opacity 0.5s ease-out';
     this.menuContainer.style.opacity = '0';
@@ -267,4 +297,3 @@ export class MainMenu {
     }, 500);
   }
 }
-
