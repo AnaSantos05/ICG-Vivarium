@@ -81,7 +81,7 @@ export const TREE2_CONFIG = {
   path: './resources/ground/trees/Rita/',
   model: 'TreeGhibliComplete.glb',
   fallback_model: 'Tree3.glb',
-  collision_radius: 2,
+  collision_radius: 1.4,
   spawn_area: 360,
   color_multiplier: 1.1,
   desired_height: 14
@@ -92,7 +92,7 @@ export const TREE_CONFIG = {
   scale: 1,
   path: './resources/ground/trees/Rita/',
   model: 'Tree_final.glb',
-  collision_radius: 1.2,
+  collision_radius: 1.0,
   spawn_area: 360,
   position: { y: 0 },
   color_multiplier: 0.65
