@@ -684,7 +684,7 @@ export class NPCManager {
     if (this.activeNpcKey === 'frog') {
       const frogState = this.npcDialogueState.frog || { progressIndex: 0, storyCompleted: false };
       if (frogState.storyCompleted) {
-        dialogueLines = [{ text: 'Please, defeat the slime.', bg: './resources/ui/Lenny.png' }];
+        dialogueLines = [{ text: 'Thank you! Now go talk to the duck.', bg: './resources/ui/Lenny.png' }];
       } else {
         dialogueLines = this.getFrogStoryDialogueLines();
         this.isUsingFrogStoryDialogue = true;

@@ -400,6 +400,7 @@ function startCoreGame(options = {}) {
     orbDefeats: 0,
     keyGranted: false,
     talkedToFrog: false,
+    slimeTurnedIn: false,
     talkedToDuck: false,
     talkedToDuckForKey: false
   });
@@ -706,15 +707,19 @@ function handleGameOver() {
   game_completed = true;
   controls_enabled = false;
 
+  if (bossUIManager && typeof bossUIManager.hide === 'function') {
+    bossUIManager.hide();
+  }
+
   gameOverScreen.show({
     onRetry: () => {
       const latestSave = saveManager.getLatestLocalSave();
-      if (!latestSave) {
-        alert('nao foi encontrado nenhum save local.');
-        return;
-      }
       gameOverScreen.hide();
       audioManager.stopMenuMusic();
+      if (!latestSave) {
+        startCoreGame();
+        return;
+      }
       startCoreGame({ loadedSnapshot: latestSave });
     },
     onMenu: () => {

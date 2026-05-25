@@ -9,6 +9,7 @@ export class QuestManager {
       orbDefeats: 0,
       keyGranted: false,
       talkedToFrog: false,
+      slimeTurnedIn: false,
       talkedToDuck: false,
       talkedToDuckForKey: false
     };
@@ -24,6 +25,7 @@ export class QuestManager {
       orbDefeats: this.state.orbDefeats,
       keyGranted: this.state.keyGranted,
       talkedToFrog: this.state.talkedToFrog,
+      slimeTurnedIn: this.state.slimeTurnedIn,
       talkedToDuck: this.state.talkedToDuck,
       talkedToDuckForKey: this.state.talkedToDuckForKey
     };
@@ -38,6 +40,7 @@ export class QuestManager {
     const orbDefeats = Number.isFinite(state.orbDefeats) ? Math.max(0, Math.min(3, state.orbDefeats)) : 0;
     const keyGranted = state.keyGranted === true;
     const talkedToFrog = state.talkedToFrog === true;
+    const slimeTurnedIn = state.slimeTurnedIn === true;
     const talkedToDuck = state.talkedToDuck === true;
     const talkedToDuckForKey = state.talkedToDuckForKey === true;
 
@@ -45,6 +48,7 @@ export class QuestManager {
     this.state.orbDefeats = orbDefeats;
     this.state.keyGranted = keyGranted;
     this.state.talkedToFrog = talkedToFrog;
+    this.state.slimeTurnedIn = slimeTurnedIn;
     this.state.talkedToDuck = talkedToDuck;
     this.state.talkedToDuckForKey = talkedToDuckForKey;
   }
@@ -52,6 +56,9 @@ export class QuestManager {
   markNpcTalked(npcKey) {
     if (npcKey === 'frog') {
       this.state.talkedToFrog = true;
+      if (this.isFrogQuestComplete()) {
+        this.state.slimeTurnedIn = true;
+      }
       return;
     }
 
@@ -78,6 +85,7 @@ export class QuestManager {
   getBossEncounterProfile() {
     const talkedToFrog = this.state.talkedToFrog === true;
     const frogQuestDone = this.isFrogQuestComplete();
+    const slimeTurnedIn = this.state.slimeTurnedIn === true;
     const talkedToDuck = this.state.talkedToDuck === true;
     const duckQuestDone = this.isDuckQuestComplete();
 
@@ -97,6 +105,15 @@ export class QuestManager {
         bossId: 'boss_slime',
         bossName: 'slime',
         phase: 'slime_quest'
+      };
+    }
+
+    if (!slimeTurnedIn) {
+      return {
+        enabled: false,
+        bossId: 'boss_slime',
+        bossName: 'slime',
+        phase: 'return_to_frog'
       };
     }
 
@@ -222,7 +239,14 @@ export class QuestManager {
     }
 
     if (npcKey === 'duck') {
-      return baseLines.concat(this.getDuckQuestLines());
+      const shouldSkipIntro = this.state.talkedToDuck === true;
+      const introSkipCount = shouldSkipIntro ? 2 : 0;
+      let prunedBaseLines = introSkipCount > 0 ? baseLines.slice(introSkipCount) : baseLines;
+      if (this.isDuckQuestComplete()) {
+        prunedBaseLines = prunedBaseLines.filter((line) => !String(line?.text || '').toLowerCase().includes('lilith'));
+      }
+      const questLines = this.getDuckQuestLines();
+      return prunedBaseLines.concat(questLines);
     }
 
     return baseLines;
@@ -248,6 +272,11 @@ export class QuestManager {
         { text: 'almost there. defeat the slime one last time and bring me the slime tear.' }
       ];
     }
+    if (!this.state.slimeTurnedIn) {
+      return [
+        { text: 'you did it! now return to me with the slime items.' }
+      ];
+    }
 
     return [
       { text: 'thank you! now go find the duck, he has missions for you too.' }
@@ -255,7 +284,7 @@ export class QuestManager {
   }
 
   getDuckQuestLines() {
-    if (!this.isFrogQuestComplete()) {
+    if (!this.isFrogQuestComplete() || !this.state.slimeTurnedIn) {
       return [
         { text: 'talk to lenny first. he will explain what you need to do.' }
       ];
@@ -315,6 +344,7 @@ export class QuestManager {
     const orbProgress = Math.min(this.state.orbDefeats, 3);
     const frogDone = this.isFrogQuestComplete();
     const duckDone = this.isDuckQuestComplete();
+    const slimeTurnedIn = this.state.slimeTurnedIn === true;
 
     if (!frogDone) {
       const steps = [
@@ -350,8 +380,12 @@ export class QuestManager {
     entries.push({
       id: 'frog_return',
       text: 'return to lenny with the slime items.',
-      completed: true
+      completed: slimeTurnedIn
     });
+
+    if (!slimeTurnedIn) {
+      return entries;
+    }
 
     if (!duckDone) {
       const steps = [
