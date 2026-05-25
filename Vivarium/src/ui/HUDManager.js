@@ -32,6 +32,9 @@ export class HUDManager {
     this.inventoryCloseBtn = null;
     this.inventoryTooltip = null;
     this.inventoryMessage = null;
+    this._inventoryMessageQueue = [];
+    this._inventoryMessageActive = false;
+    this._inventoryMessageHideTimer = null;
     this._tooltipItemId = null;
     this.questTracker = null;
     this.settingsPanel = null;
@@ -222,7 +225,7 @@ export class HUDManager {
     this.staminaFill = stamina.fill;
     barsGroup.appendChild(stamina.container);
 
-    const attackCd = this.createBar('./resources/ui/enemy.png', '#10254d', '#3a9dff');
+    const attackCd = this.createBar('./resources/ui/recharge.png', '#10254d', '#3a9dff');
     this.attackCooldownFill = attackCd.fill;
     this.attackCooldownLabel = attackCd.label;
     barsGroup.appendChild(attackCd.container);
@@ -489,16 +492,22 @@ export class HUDManager {
     message.style.cssText = `
       position: fixed;
       left: 50%;
-      top: calc(50% + 250px);
+      bottom: 85px;
       transform: translateX(-50%);
-      padding: 10px 14px;
+      min-width: 240px;
+      padding: 16px 22px;
       background: rgba(0, 0, 0, 0.7);
       border: 2px solid #ffd166;
-      border-radius: 10px;
-      font-size: 11px;
+      border-radius: 14px;
+      font-size: 14px;
       color: #fff4d6;
       text-align: center;
       display: none;
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
       z-index: 9600;
     `;
     document.body.appendChild(message);
@@ -536,12 +545,42 @@ export class HUDManager {
 
   showInventoryMessage(text, durationMs = 1600) {
     if (!this.inventoryMessage) return;
-    this.inventoryMessage.textContent = text;
+    this._inventoryMessageQueue.push({ text: String(text || ''), durationMs });
+    if (this._inventoryMessageActive) return;
+    this._showNextInventoryMessage();
+  }
+
+  _showNextInventoryMessage() {
+    if (!this.inventoryMessage) return;
+    const next = this._inventoryMessageQueue.shift();
+    if (!next) {
+      this._inventoryMessageActive = false;
+      return;
+    }
+
+    this._inventoryMessageActive = true;
+    this.inventoryMessage.textContent = next.text;
     this.inventoryMessage.style.display = 'block';
+    this.inventoryMessage.style.opacity = '0';
+    this.inventoryMessage.style.transform = 'translateX(-50%) translateY(10px)';
+
+    requestAnimationFrame(() => {
+      if (!this.inventoryMessage) return;
+      this.inventoryMessage.style.opacity = '1';
+      this.inventoryMessage.style.transform = 'translateX(-50%) translateY(0)';
+    });
+
     clearTimeout(this._inventoryMessageTimer);
+    clearTimeout(this._inventoryMessageHideTimer);
     this._inventoryMessageTimer = setTimeout(() => {
-      if (this.inventoryMessage) this.inventoryMessage.style.display = 'none';
-    }, durationMs);
+      if (!this.inventoryMessage) return;
+      this.inventoryMessage.style.opacity = '0';
+      this.inventoryMessage.style.transform = 'translateX(-50%) translateY(10px)';
+      this._inventoryMessageHideTimer = setTimeout(() => {
+        if (this.inventoryMessage) this.inventoryMessage.style.display = 'none';
+        this._showNextInventoryMessage();
+      }, 260);
+    }, next.durationMs || 1600);
   }
 
   createQuestTracker() {

@@ -97,6 +97,11 @@ export class InventoryManager {
     if (existing) {
       if (existing.stackable || stackable) {
         existing.quantity = Math.max(1, Math.floor((existing.quantity || 1) + quantity));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('vivarium:item-gained', {
+            detail: { item: { ...existing }, quantityAdded: quantity }
+          }));
+        }
         return;
       }
 
@@ -112,6 +117,12 @@ export class InventoryManager {
       stackable,
       collectedAt: typeof item.collectedAt === 'string' ? item.collectedAt : new Date().toISOString()
     });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('vivarium:item-gained', {
+        detail: { item: { id: itemId, name: itemName, quantity, icon, lore, stackable }, quantityAdded: quantity }
+      }));
+    }
   }
 
   removeItem(id, quantity = 1) {

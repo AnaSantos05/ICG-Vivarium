@@ -382,6 +382,16 @@ window.addEventListener('vivarium:npc-talked', (event) => {
   questManager.markNpcTalked(npcKey);
 });
 
+window.addEventListener('vivarium:item-gained', (event) => {
+  const detail = event && event.detail ? event.detail : null;
+  if (!detail || !hudManager) return;
+  const item = detail.item || {};
+  const quantityAdded = Number.isFinite(detail.quantityAdded) ? detail.quantityAdded : 1;
+  const name = String(item.name || 'item').trim();
+  const label = quantityAdded > 1 ? `+${quantityAdded} ${name}` : `+1 ${name}`;
+  hudManager.showInventoryMessage(label);
+});
+
 function startCoreGame(options = {}) {
   loadingScreen = new LoadingScreen();
   assets_loaded = 0;
@@ -495,7 +505,7 @@ function startCoreGame(options = {}) {
     creditsUrl: './resources/credits/credits.txt',
     title: 'Vivarium Credits',
     autoClose: true,
-    speed: 40
+    speed: 70
   });
   doorManager.setOnUnlocked(async () => {
     game_completed = true;
