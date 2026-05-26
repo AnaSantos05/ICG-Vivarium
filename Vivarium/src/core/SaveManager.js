@@ -1,4 +1,6 @@
 const SAVE_STORAGE_KEY = 'vivarium_save_latest';
+const SAVE_ENCRYPTION_KEY = 'vivarium_save_key_v1';
+const SAVE_ENCRYPTION_ALGO = 'xor-base64-v1';
 
 export class SaveManager {
   constructor() {
@@ -85,7 +87,7 @@ export class SaveManager {
   saveSnapshot(snapshot) {
     if (!snapshot || typeof snapshot !== 'object') return null;
 
-    const jsonText = JSON.stringify(snapshot, null, 2);
+    const jsonText = this.buildEncryptedSnapshotText(snapshot);
     const fileName = `vivarium-save-${this.getTimestampFileSuffix()}.json`;
 
     this.downloadJson(jsonText, fileName);
@@ -97,14 +99,118 @@ export class SaveManager {
     };
   }
 
+  importSnapshotFromJsonText(jsonText) {
+    // accepts raw json text (plain or encrypted) and stores it in localstorage
+    if (typeof jsonText !== 'string' || jsonText.trim().length === 0) return null;
+
+    const snapshot = this.parseSnapshotFromJsonText(jsonText);
+    if (!snapshot) return null;
+
+    const encryptedText = this.buildEncryptedSnapshotText(snapshot);
+    this.persistInLocalStorage(encryptedText);
+
+    return snapshot;
+  }
+
   getLatestLocalSave() {
     try {
       const raw = window.localStorage.getItem(SAVE_STORAGE_KEY);
       if (!raw) return null;
 
-      const parsed = JSON.parse(raw);
+      return this.parseSnapshotFromJsonText(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  parseSnapshotFromJsonText(jsonText) {
+    try {
+      const parsed = JSON.parse(jsonText);
       if (!parsed || typeof parsed !== 'object') return null;
-      return parsed;
+
+      if (parsed.meta && parsed.progress) {
+        return parsed;
+      }
+
+      const payload = typeof parsed.payload === 'string' ? parsed.payload : null;
+      if (!payload) return null;
+
+      const decrypted = this.decryptText(payload);
+      if (!decrypted) return null;
+
+      const snapshot = JSON.parse(decrypted);
+      if (!snapshot || typeof snapshot !== 'object') return null;
+      if (!snapshot.meta || !snapshot.progress) return null;
+
+      return snapshot;
+    } catch {
+      return null;
+    }
+  }
+
+  buildEncryptedSnapshotText(snapshot) {
+    const jsonText = JSON.stringify(snapshot, null, 2);
+    const encrypted = this.encryptText(jsonText);
+    const wrapper = {
+      meta: {
+        version: 1,
+        encrypted: true,
+        algorithm: SAVE_ENCRYPTION_ALGO,
+        savedAt: new Date().toISOString()
+      },
+      payload: encrypted
+    };
+
+    return JSON.stringify(wrapper, null, 2);
+  }
+
+  encryptText(text) {
+    // lightweight obfuscation to discourage manual edits
+    if (typeof text !== 'string') return '';
+    const bytes = this.xorBytes(new TextEncoder().encode(text), SAVE_ENCRYPTION_KEY);
+    return this.bytesToBase64(bytes);
+  }
+
+  decryptText(encoded) {
+    // expects the payload created by encryptText
+    if (typeof encoded !== 'string') return '';
+    const bytes = this.base64ToBytes(encoded);
+    if (!bytes) return '';
+    const decoded = this.xorBytes(bytes, SAVE_ENCRYPTION_KEY);
+    return new TextDecoder().decode(decoded);
+  }
+
+  xorBytes(bytes, key) {
+    const keyBytes = new TextEncoder().encode(String(key));
+    if (!keyBytes.length) return bytes;
+
+    const output = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i += 1) {
+      output[i] = bytes[i] ^ keyBytes[i % keyBytes.length];
+    }
+    return output;
+  }
+
+  bytesToBase64(bytes) {
+    let binary = '';
+    const chunkSize = 0x8000;
+
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      const chunk = bytes.subarray(i, i + chunkSize);
+      binary += String.fromCharCode(...chunk);
+    }
+
+    return btoa(binary);
+  }
+
+  base64ToBytes(base64) {
+    try {
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return bytes;
     } catch {
       return null;
     }

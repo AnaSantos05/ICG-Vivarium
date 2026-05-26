@@ -260,14 +260,18 @@ export class MainMenu {
   handleLoadGame() {
     if (this.actionLocked) return;
     this.actionLocked = true;
-    this.hide(() => {
-      if (this.onLoadGame) {
-        this.onLoadGame();
-        return;
-      }
+    if (this.onLoadGame) {
+      const handled = this.onLoadGame();
+      if (!handled) this.actionLocked = false;
+      return;
+    }
 
-      alert('load game ainda nao esta ligado.');
-    });
+    alert('load game ainda nao esta ligado.');
+    this.actionLocked = false;
+  }
+
+  unlockActions() {
+    this.actionLocked = false;
   }
 
   handleQuit() {

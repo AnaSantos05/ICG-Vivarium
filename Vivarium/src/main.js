@@ -611,13 +611,72 @@ function wireMainMenuActions() {
     const latestSave = saveManager.getLatestLocalSave();
     if (!latestSave) {
       alert('nao foi encontrado nenhum save local.');
-      mainMenu.init();
-      wireMainMenuActions();
-      return;
+      return false;
+    }
+
+    const shouldLoad = confirm('A local save was detected. Would you like to load it?');
+    if (!shouldLoad) {
+      const shouldImport = confirm('Would you like to import a save from your device?');
+      if (!shouldImport) {
+        return false;
+      }
+
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json,application/json';
+      input.style.display = 'none';
+      document.body.appendChild(input);
+      const unlockMenu = () => {
+        if (mainMenu && typeof mainMenu.unlockActions === 'function') {
+          mainMenu.unlockActions();
+        }
+      };
+      input.addEventListener('change', async () => {
+        const file = input.files && input.files[0] ? input.files[0] : null;
+        input.remove();
+        if (!file) {
+          unlockMenu();
+          return;
+        }
+
+        try {
+          const text = await file.text();
+          const snapshot = saveManager.importSnapshotFromJsonText(text);
+          if (!snapshot) {
+            alert('failed to import save.');
+            unlockMenu();
+            return;
+          }
+
+          audioManager.stopMenuMusic();
+          mainMenu.hide(() => {
+            startCoreGame({ loadedSnapshot: snapshot });
+          });
+        } catch (error) {
+          console.warn('failed to import save', error);
+          alert('failed to import save.');
+          unlockMenu();
+        }
+      });
+
+      const onFocus = () => {
+        setTimeout(() => {
+          if (document.body.contains(input) && (!input.files || !input.files.length)) {
+            input.remove();
+            unlockMenu();
+          }
+        }, 0);
+      };
+      window.addEventListener('focus', onFocus, { once: true });
+      input.click();
+      return true;
     }
 
     audioManager.stopMenuMusic();
-    startCoreGame({ loadedSnapshot: latestSave });
+    mainMenu.hide(() => {
+      startCoreGame({ loadedSnapshot: latestSave });
+    });
+    return true;
   };
 }
 
