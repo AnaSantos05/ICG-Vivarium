@@ -9,17 +9,27 @@ export const SCENE_CONFIG = {
   // sky color used for the clear background
   BACKGROUND_COLOR: 0x87ceeb,
   FOG_COLOR: 0x3b2a57,
-  FOG_DENSITY: 0.008,
+  FOG_DENSITY: 0.012,
   FOG_NEAR: 30,
   FOG_FAR: 160
 };
 
+export const VOID_COVER_CONFIG = {
+  // large, low plane to hide the abyss in the distance
+  size_multiplier: 6,
+  height: -8,
+  opacity: 0.92,
+  color: SCENE_CONFIG.FOG_COLOR
+};
+
 export const TERRAIN_CONFIG = {
   // base size and resolution of the ground
-  size: 400,
-  segments: 200,
+  size: 800,
+  segments: 300,
+  // start wrapping before the exact edge to avoid seeing the abyss
+  wrap_margin: 80,
   // how many times the grass texture repeats across the plane
-  texture_repeat: 100,
+  texture_repeat: 200,
   // path to the main grass texture
   texture_path: './resources/ground/texture.jpg'
 };

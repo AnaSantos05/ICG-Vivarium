@@ -119,9 +119,11 @@ function wrapWorldPosition(position) {
 
   const size = TERRAIN_CONFIG.size;
   const half = size * 0.5;
+  const wrapMargin = Number.isFinite(TERRAIN_CONFIG.wrap_margin) ? TERRAIN_CONFIG.wrap_margin : 0;
+  const wrapLimit = Math.max(0, half - wrapMargin);
   let { x, z } = position;
 
-  if (Math.abs(x) <= half && Math.abs(z) <= half) return null;
+  if (Math.abs(x) <= wrapLimit && Math.abs(z) <= wrapLimit) return null;
 
   const wrappedX = (((x + half) % size) + size) % size - half;
   const wrappedZ = (((z + half) % size) + size) % size - half;
@@ -841,6 +843,7 @@ function animate() {
   if (playerPosition) {
     if (lightingManager) lightingManager.updatePlayerLight(playerPosition);
     if (sky_manager) sky_manager.update(playerPosition);
+    if (terrainManager) terrainManager.update(playerPosition);
     if (npcManager) npcManager.update(playerPosition, inputManager);
   }
 

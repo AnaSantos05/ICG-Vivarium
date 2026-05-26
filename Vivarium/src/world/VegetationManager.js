@@ -1,7 +1,7 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.118.1/build/three.module.js';
 import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.118.1/examples/jsm/loaders/GLTFLoader.js';
 import { FBXLoader } from 'https://cdn.jsdelivr.net/npm/three@0.118.1/examples/jsm/loaders/FBXLoader.js';
-import { TREE_CONFIG, TREE2_CONFIG, BUSH_CONFIG } from '../config/gameConfig.js';
+import { TREE_CONFIG, TREE2_CONFIG, BUSH_CONFIG, TERRAIN_CONFIG } from '../config/gameConfig.js';
 
 export class VegetationManager {
   constructor(scene, terrain_manager, scene_manager) {
@@ -12,6 +12,7 @@ export class VegetationManager {
     this.trees = [];
     this.bushes = [];
     this.colliders = [];
+    this.vegetationTiles = [];
 
     this.on_load_callback = null;
     this.trees_loaded = 0;
@@ -38,9 +39,45 @@ export class VegetationManager {
 
   check_all_loaded() {
     // consider vegetation loaded after at least one tree and one bush
-    if (this.trees_loaded >= 1 && this.bushes_loaded >= 1 && this.on_load_callback) {
-      this.on_load_callback();
-      this.on_load_callback = null;
+    if (this.trees_loaded >= 1 && this.bushes_loaded >= 1) {
+      this.createVegetationTiles();
+      if (this.on_load_callback) {
+        this.on_load_callback();
+        this.on_load_callback = null;
+      }
+    }
+  }
+
+  createVegetationTiles() {
+    if (this.vegetationTiles.length > 0) return;
+    const sizeToUse = Number.isFinite(TERRAIN_CONFIG.size) ? TERRAIN_CONFIG.size : null;
+    if (!Number.isFinite(sizeToUse)) return;
+
+    const offsets = [-1, 0, 1];
+
+    for (const ox of offsets) {
+      for (const oz of offsets) {
+        if (ox === 0 && oz === 0) continue;
+        const group = new THREE.Group();
+        group.position.set(ox * sizeToUse, 0, oz * sizeToUse);
+
+        for (const tree of this.trees) {
+          const clone = tree.clone(true);
+          group.add(clone);
+        }
+
+        for (const bush of this.bushes) {
+          const clone = bush.clone(true);
+          group.add(clone);
+        }
+
+        this.scene.add(group);
+        this.vegetationTiles.push(group);
+
+        if (this.scene_manager) {
+          this.scene_manager.registerCullableObjects(group.children);
+        }
+      }
     }
   }
 
