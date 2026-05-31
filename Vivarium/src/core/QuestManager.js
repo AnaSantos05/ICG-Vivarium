@@ -38,11 +38,28 @@ export class QuestManager {
       : state.bunnyDefeats;
     const lilithDefeats = Number.isFinite(rawLilithDefeats) ? Math.max(0, Math.min(3, rawLilithDefeats)) : 0;
     const orbDefeats = Number.isFinite(state.orbDefeats) ? Math.max(0, Math.min(3, state.orbDefeats)) : 0;
-    const keyGranted = state.keyGranted === true;
-    const talkedToFrog = state.talkedToFrog === true;
-    const slimeTurnedIn = state.slimeTurnedIn === true;
-    const talkedToDuck = state.talkedToDuck === true;
-    const talkedToDuckForKey = state.talkedToDuckForKey === true;
+    const rawTalkedToFrog = state.talkedToFrog === true;
+    const rawSlimeTurnedIn = state.slimeTurnedIn === true;
+    const rawTalkedToDuck = state.talkedToDuck === true;
+    const rawTalkedToDuckForKey = state.talkedToDuckForKey === true;
+    const rawKeyGranted = state.keyGranted === true;
+
+    // reconcile older or inconsistent saves:
+    // progress counters are authoritative, flags must not jump ahead.
+    const talkedToFrog = rawTalkedToFrog || lilithDefeats > 0 || rawSlimeTurnedIn || rawTalkedToDuck || orbDefeats > 0 || rawTalkedToDuckForKey || rawKeyGranted;
+    const slimeTurnedIn = (rawSlimeTurnedIn || rawTalkedToDuck || orbDefeats > 0 || rawTalkedToDuckForKey || rawKeyGranted)
+      && lilithDefeats >= 3
+      && talkedToFrog;
+    const talkedToDuck = rawTalkedToDuck || orbDefeats > 0 || rawTalkedToDuckForKey || rawKeyGranted;
+    const talkedToDuckForKey = (rawTalkedToDuckForKey || rawKeyGranted)
+      && orbDefeats >= 3
+      && talkedToDuck;
+    const hasKeyItem = this.inventoryManager && typeof this.inventoryManager.hasItem === 'function'
+      ? this.inventoryManager.hasItem('end_key')
+      : false;
+    const keyGranted = (rawKeyGranted || hasKeyItem)
+      && orbDefeats >= 3
+      && talkedToDuckForKey;
 
     this.state.lilithDefeats = lilithDefeats;
     this.state.orbDefeats = orbDefeats;
@@ -176,10 +193,10 @@ export class QuestManager {
     if (!this.inventoryManager) return;
 
     const rewardCandidates = step === 1
-      ? [ITEMS_CONFIG.slime_orb, ITEMS_CONFIG.lilith_orb, ITEMS_CONFIG.bunny_orb]
+      ? [ITEMS_CONFIG.bunny_orb, ITEMS_CONFIG.slime_orb, ITEMS_CONFIG.lilith_orb]
       : step === 2
-        ? [ITEMS_CONFIG.slime_blood, ITEMS_CONFIG.lilith_blood, ITEMS_CONFIG.bunny_blood]
-        : [ITEMS_CONFIG.slime_tear, ITEMS_CONFIG.lilith_tear, ITEMS_CONFIG.bunny_tear];
+        ? [ITEMS_CONFIG.bunny_blood, ITEMS_CONFIG.slime_blood, ITEMS_CONFIG.lilith_blood]
+        : [ITEMS_CONFIG.bunny_tear, ITEMS_CONFIG.slime_tear, ITEMS_CONFIG.lilith_tear];
 
     const hasAnyEquivalentReward = rewardCandidates.some((candidate) => (
       candidate && candidate.id && this.inventoryManager.hasItem(candidate.id)

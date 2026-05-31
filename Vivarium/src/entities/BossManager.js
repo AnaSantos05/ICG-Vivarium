@@ -49,6 +49,7 @@ export class BossManager {
     };
     this.pendingRespawnAt = 0;
     this.encounterEnabled = false;
+    this.lastHitReactAt = -Infinity;
 
     this.config = {
       MODEL_PROFILES: {
@@ -220,6 +221,7 @@ export class BossManager {
       IDLE_STATIC_POSE: false,
       LOW_HEALTH_INJURED_RATIO: COMBAT_CONFIG.boss_injured_idle_ratio || 0.35,
       ATTACK_ANIMATION_SPEED: COMBAT_CONFIG.boss_attack_anim_speed || 0.78,
+      HIT_REACT_COOLDOWN_SECONDS: Math.max(0, Number(COMBAT_CONFIG.boss_hit_react_cooldown || 0.9)),
       ACTIVATION_RADIUS: COMBAT_CONFIG.boss_activation_radius || 40,
       FACING_YAW_OFFSET: THREE.Math.degToRad(5),
       DESIRED_HEIGHT: 7,
@@ -882,10 +884,15 @@ export class BossManager {
 
   playHitReaction() {
     if (this.state.isDead || this.state.isSpawning) return false;
+    if (this.state.isAttacking) return false;
     if (!this.animations.hit_react) return false;
+    const now = performance.now() * 0.001;
+    const hitReactCooldown = Math.max(0, Number(this.config.HIT_REACT_COOLDOWN_SECONDS || 0));
+    if (now < (this.lastHitReactAt + hitReactCooldown)) return false;
     const didPlay = this.playAction('hit_react', { fade: 0.06, force: true });
     if (!didPlay) return false;
 
+    this.lastHitReactAt = now;
     this.state.isInPain = true;
     this.state.isAttacking = false;
     return true;

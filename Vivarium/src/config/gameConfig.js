@@ -137,38 +137,39 @@ export const SLIME_ARENA_CONFIG = {
 };
 
 export const COMBAT_CONFIG = {
-  q_cooldown: 2.8,
-  r_cooldown: 1.0,
+  q_cooldown: 3.4,
+  r_cooldown: 1.8,
   // r locks to the boss only if the boss is close enough
   r_lock_radius: 40,
   // player -> boss damage rules
-  player_tail_damage: 42,
-  player_paws_damage: 30,
+  player_tail_damage: 34,
+  player_paws_damage: 22,
   player_tail_range: 8.5,
   player_paws_range: 38,
   player_attack_arc_dot: 0.18,
   player_projectile_dot: -0.2,
   // boss combat tuning
-  boss_max_health: 320,
+  boss_max_health: 420,
   boss_activation_radius: 40,
   boss_aggro_range: 30,
-  boss_attack_cooldown: 3.2,
-  boss_attack_windup_ratio: 0.55,
-  boss_attack_anim_speed: 0.92,
+  boss_attack_cooldown: 2.2,
+  boss_attack_windup_ratio: 0.5,
+  boss_attack_anim_speed: 1.05,
   boss_max_defeats: 3,
   boss_respawn_delay: 3.8,
   boss_injured_idle_ratio: 0.35,
-  boss_slash_damage: 12,
+  boss_slash_damage: 16,
   boss_slash_range: 7.8,
   boss_front_arc_dot: 0.16,
-  boss_spell_damage: 15,
-  boss_spell_range: 20,
+  boss_spell_damage: 20,
+  boss_spell_range: 22,
   boss_warning_flash_speed: 12,
   boss_warning_height_offset: 0.9,
-  boss_area_damage: 18,
-  boss_area_range: 9.5,
+  boss_area_damage: 24,
+  boss_area_range: 10.5,
+  boss_hit_react_cooldown: 0.9,
   boss_spell_vfx_speed: 20,
-  player_damage_invuln: 1.15,
+  player_damage_invuln: 0.85,
   // projectile
   r_projectile_speed: 45,
   r_projectile_lifetime: 1.25,
@@ -313,42 +314,42 @@ export const ITEMS_CONFIG = {
   lilith_orb: {
     id: 'lilith_orb',
     name: 'slime orb',
-    icon: './resources/inventory/orb_boss/orb_blood.png',
+    icon: './resources/inventory/bunny_boss/bunny_orb.png',
     stackable: false,
     lore: 'a sticky orb pulsing with the slime guard essence.'
   },
   lilith_blood: {
     id: 'lilith_blood',
     name: 'slime blood',
-    icon: './resources/inventory/orb_boss/orb_fang.png',
+    icon: './resources/inventory/bunny_boss/bunny_blood.png',
     stackable: false,
     lore: 'a viscous drop that keeps wobbling inside the vial.'
   },
   lilith_tear: {
     id: 'lilith_tear',
     name: 'slime tear',
-    icon: './resources/inventory/orb_boss/orb_tear.png',
+    icon: './resources/inventory/bunny_boss/bunny_tear.png',
     stackable: false,
     lore: 'a gelatinous tear that reflects the moonlight.'
   },
   bunny_orb: {
     id: 'bunny_orb',
     name: 'slime orb',
-    icon: './resources/inventory/orb_boss/orb_blood.png',
+    icon: './resources/inventory/bunny_boss/bunny_orb.png',
     stackable: false,
     lore: 'a sticky orb pulsing with the slime guard essence.'
   },
   bunny_blood: {
     id: 'bunny_blood',
     name: 'slime blood',
-    icon: './resources/inventory/orb_boss/orb_fang.png',
+    icon: './resources/inventory/bunny_boss/bunny_blood.png',
     stackable: false,
     lore: 'a viscous drop that keeps wobbling inside the vial.'
   },
   bunny_tear: {
     id: 'bunny_tear',
     name: 'slime tear',
-    icon: './resources/inventory/orb_boss/orb_tear.png',
+    icon: './resources/inventory/bunny_boss/bunny_tear.png',
     stackable: false,
     lore: 'a gelatinous tear that reflects the moonlight.'
   },

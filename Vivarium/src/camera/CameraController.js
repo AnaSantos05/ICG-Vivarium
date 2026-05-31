@@ -15,6 +15,8 @@ export class CameraController {
     this.last_y = 0;
 
     this._lastFinalAngle = 0;
+    this.invertYAxis = false;
+    this.invertXAxis = false;
 
     this.setup_mouse_controls();
   }
@@ -45,8 +47,10 @@ export class CameraController {
       this.last_x = e.clientX;
       this.last_y = e.clientY;
 
-      this.angle_offset += dx * CAMERA_CONTROL_CONFIG.MOUSE_SENSITIVITY;
-      this.verticalAngle -= dy * CAMERA_CONTROL_CONFIG.MOUSE_SENSITIVITY;
+      const horizontalDirection = this.invertXAxis ? -1 : 1;
+      this.angle_offset += dx * CAMERA_CONTROL_CONFIG.MOUSE_SENSITIVITY * horizontalDirection;
+      const verticalDirection = this.invertYAxis ? 1 : -1;
+      this.verticalAngle += dy * CAMERA_CONTROL_CONFIG.MOUSE_SENSITIVITY * verticalDirection;
     });
   }
 
@@ -54,8 +58,10 @@ export class CameraController {
     // arrow keys move the camera around the player
     if (input_manager) {
       const { delta_x, delta_y } = input_manager.get_arrow_rotation_delta();
-      this.angle_offset += delta_x;
-      this.verticalAngle += delta_y;
+      const horizontalDirection = this.invertXAxis ? -1 : 1;
+      this.angle_offset += delta_x * horizontalDirection;
+      const verticalDirection = this.invertYAxis ? -1 : 1;
+      this.verticalAngle += delta_y * verticalDirection;
     }
 
     this.verticalAngle = Math.max(
@@ -103,5 +109,21 @@ export class CameraController {
   // (camera looks at the target, so forward is opposite of orbit angle)
   get_view_yaw() {
     return (typeof this._lastFinalAngle === 'number' ? this._lastFinalAngle : 0) + Math.PI;
+  }
+
+  setInvertYAxis(enabled) {
+    this.invertYAxis = enabled === true;
+  }
+
+  isInvertYAxisEnabled() {
+    return this.invertYAxis === true;
+  }
+
+  setInvertXAxis(enabled) {
+    this.invertXAxis = enabled === true;
+  }
+
+  isInvertXAxisEnabled() {
+    return this.invertXAxis === true;
   }
 }

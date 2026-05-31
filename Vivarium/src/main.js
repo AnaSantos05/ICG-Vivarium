@@ -61,6 +61,8 @@ const questManager = new QuestManager(inventoryManager);
 let pendingLoadedSnapshot = null;
 let hasAppliedLoadedSnapshot = false;
 let pendingHudSettings = null;
+let cameraInvertYPreference = false;
+let cameraInvertXPreference = false;
 
 // game objects (lazy-initialized after play)
 let loadingScreen = null;
@@ -139,6 +141,12 @@ function ensureHud() {
 
   if (pendingHudSettings) {
     hudManager.applySettingsSnapshot(pendingHudSettings.hud || {});
+    if (typeof pendingHudSettings?.controls?.invertCameraY === 'boolean' && typeof hudManager.setCameraInvertY === 'function') {
+      hudManager.setCameraInvertY(pendingHudSettings.controls.invertCameraY, false);
+    }
+    if (typeof pendingHudSettings?.controls?.invertCameraX === 'boolean' && typeof hudManager.setCameraInvertX === 'function') {
+      hudManager.setCameraInvertX(pendingHudSettings.controls.invertCameraX, false);
+    }
     pendingHudSettings = null;
   }
 }
@@ -166,7 +174,13 @@ function buildSettingsSnapshot() {
     audio: audioSettings,
     hud: hudManager ? hudManager.getSettingsSnapshot() : { minimapScale: 0.85 },
     controls: {
-      enabled: !!controls_enabled
+      enabled: !!controls_enabled,
+      invertCameraY: cameraController && typeof cameraController.isInvertYAxisEnabled === 'function'
+        ? cameraController.isInvertYAxisEnabled()
+        : cameraInvertYPreference,
+      invertCameraX: cameraController && typeof cameraController.isInvertXAxisEnabled === 'function'
+        ? cameraController.isInvertXAxisEnabled()
+        : cameraInvertXPreference
     }
   };
 }
@@ -194,8 +208,34 @@ function applySettingsSnapshot(settings) {
 
   if (hudManager) {
     hudManager.applySettingsSnapshot(settings.hud || {});
+    if (typeof settings?.controls?.invertCameraY === 'boolean' && typeof hudManager.setCameraInvertY === 'function') {
+      hudManager.setCameraInvertY(settings.controls.invertCameraY, false);
+    }
+    if (typeof settings?.controls?.invertCameraX === 'boolean' && typeof hudManager.setCameraInvertX === 'function') {
+      hudManager.setCameraInvertX(settings.controls.invertCameraX, false);
+    }
   } else {
     pendingHudSettings = settings;
+  }
+
+  const invertCameraY = settings && settings.controls && typeof settings.controls.invertCameraY === 'boolean'
+    ? settings.controls.invertCameraY
+    : null;
+  if (invertCameraY !== null) {
+    cameraInvertYPreference = invertCameraY;
+    if (cameraController && typeof cameraController.setInvertYAxis === 'function') {
+      cameraController.setInvertYAxis(cameraInvertYPreference);
+    }
+  }
+
+  const invertCameraX = settings && settings.controls && typeof settings.controls.invertCameraX === 'boolean'
+    ? settings.controls.invertCameraX
+    : null;
+  if (invertCameraX !== null) {
+    cameraInvertXPreference = invertCameraX;
+    if (cameraController && typeof cameraController.setInvertXAxis === 'function') {
+      cameraController.setInvertXAxis(cameraInvertXPreference);
+    }
   }
 }
 
@@ -355,6 +395,28 @@ window.addEventListener('vivarium:open-tutorial', () => {
   });
 });
 
+window.addEventListener('vivarium:quit-requested', () => {
+  controls_enabled = false;
+  game_started = false;
+  game_completed = true;
+
+  if (hudManager) {
+    if (hudManager.isInventoryOpen()) hudManager.toggleInventory(false);
+    if (hudManager.isMapOpen()) hudManager.toggleMapPanel(false);
+    if (hudManager.isSettingsOpen()) hudManager.toggleSettingsPanel(false);
+  }
+
+  if (audioManager) {
+    audioManager.stopGameplayAmbience();
+    audioManager.playMenuMusic();
+  }
+
+  const existingMainMenu = document.getElementById('main-menu');
+  if (existingMainMenu) existingMainMenu.remove();
+  mainMenu.init();
+  wireMainMenuActions();
+});
+
 window.addEventListener('vivarium:save-requested', () => {
   const saveResult = performSave();
 
@@ -375,6 +437,25 @@ window.addEventListener('vivarium:audio-settings-changed', (event) => {
   if (!detail) return;
   if (audioManager && typeof audioManager.setVolumeMix === 'function') {
     audioManager.setVolumeMix(detail);
+  }
+});
+
+window.addEventListener('vivarium:camera-invert-changed', (event) => {
+  const detail = event && event.detail ? event.detail : null;
+  if (!detail) return;
+
+  if (typeof detail.invertY === 'boolean') {
+    cameraInvertYPreference = detail.invertY;
+    if (cameraController && typeof cameraController.setInvertYAxis === 'function') {
+      cameraController.setInvertYAxis(cameraInvertYPreference);
+    }
+  }
+
+  if (typeof detail.invertX === 'boolean') {
+    cameraInvertXPreference = detail.invertX;
+    if (cameraController && typeof cameraController.setInvertXAxis === 'function') {
+      cameraController.setInvertXAxis(cameraInvertXPreference);
+    }
   }
 });
 
@@ -529,6 +610,12 @@ function startCoreGame(options = {}) {
   });
 
   cameraController = new CameraController(camera);
+  if (typeof cameraController.setInvertYAxis === 'function') {
+    cameraController.setInvertYAxis(cameraInvertYPreference);
+  }
+  if (typeof cameraController.setInvertXAxis === 'function') {
+    cameraController.setInvertXAxis(cameraInvertXPreference);
+  }
 
   cinematic_manager = new CinematicManager(camera, playerManager, vegetationManager, terrainManager);
 
@@ -681,7 +768,8 @@ function wireMainMenuActions() {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (e.key === '7' && !e.repeat) {
+  // keep quest debug advance behind a hard-to-hit combo
+  if (e.key === '7' && e.ctrlKey && e.shiftKey && !e.repeat) {
     const defeated = questManager.debugAdvance();
     if (defeated) {
       console.log(`debug: simulated defeat -> ${defeated}`);

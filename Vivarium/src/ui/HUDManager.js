@@ -4,6 +4,14 @@ export class HUDManager {
     this.minimapCanvas = null;
     this.minimapContext = null;
     this.mapGroup = null;
+    this.backpackGroup = null;
+    this.barsGroup = null;
+    this.settingsButton = null;
+    this.saveButton = null;
+    this.questTrackerPanel = null;
+    this.hudScale = 1;
+    this.hudScaleReference = { width: 1366, height: 768 };
+    this._hudResizeHandler = null;
     this.expandedMapPanel = null;
     this.expandedMapCanvas = null;
     this.expandedMapContext = null;
@@ -43,6 +51,10 @@ export class HUDManager {
     this.settingsSfxSlider = null;
     this.settingsCombatSlider = null;
     this.settingsMuteToggle = null;
+    this.settingsInvertCameraToggle = null;
+    this.settingsInvertCameraXToggle = null;
+    this.cameraInvertY = false;
+    this.cameraInvertX = false;
     this._cachedInventorySignature = '';
     this._cachedQuestSignature = '';
     this._completedQuestLines = new Set();
@@ -201,6 +213,7 @@ export class HUDManager {
     backpackGroup.appendChild(backpackBtn);
 
     root.appendChild(backpackGroup);
+    this.backpackGroup = backpackGroup;
 
     // health & stamina bars (bottom-center)
     const barsGroup = document.createElement('div');
@@ -231,6 +244,7 @@ export class HUDManager {
     barsGroup.appendChild(attackCd.container);
 
     root.appendChild(barsGroup);
+    this.barsGroup = barsGroup;
 
     const damageOverlay = document.createElement('div');
     damageOverlay.style.cssText = `
@@ -262,6 +276,7 @@ export class HUDManager {
       this.toggleSettingsPanel();
     });
     root.appendChild(settingsBtn);
+    this.settingsButton = settingsBtn;
 
     const saveBtn = document.createElement('button');
     saveBtn.type = 'button';
@@ -296,6 +311,7 @@ export class HUDManager {
       window.dispatchEvent(new CustomEvent('vivarium:save-requested'));
     });
     root.appendChild(saveBtn);
+    this.saveButton = saveBtn;
 
     const saveStatus = document.createElement('div');
     saveStatus.style.cssText = `
@@ -323,6 +339,77 @@ export class HUDManager {
     this.createQuestTracker();
     this.createSettingsPanel();
     this.setAttackCooldown(1, false);
+    this.applyHUDResponsiveScale();
+
+    if (!this._hudResizeHandler) {
+      this._hudResizeHandler = () => this.applyHUDResponsiveScale();
+      window.addEventListener('resize', this._hudResizeHandler, { passive: true });
+    }
+  }
+
+  applyHUDResponsiveScale() {
+    const refW = Math.max(this.hudScaleReference.width || 0, 1);
+    const refH = Math.max(this.hudScaleReference.height || 0, 1);
+    const currentW = Math.max(window.innerWidth || 0, 1);
+    const currentH = Math.max(window.innerHeight || 0, 1);
+    const scale = Math.max(0.42, Math.min(1, Math.min(currentW / refW, currentH / refH)));
+    const isSmallScreen = currentW <= 768;
+    const isVerySmallScreen = currentW <= 560;
+    const mapBoost = isVerySmallScreen ? 2.15 : (isSmallScreen ? 1.75 : 1);
+    const questBoost = isVerySmallScreen ? 2.05 : (isSmallScreen ? 1.6 : 1);
+    const topRightBoost = isVerySmallScreen ? 1.95 : (isSmallScreen ? 1.55 : 1);
+    const mapScale = Math.min(1.08, scale * mapBoost);
+    const questScale = Math.min(1.02, scale * questBoost);
+    const topRightScale = Math.min(1.08, scale * topRightBoost);
+    this.hudScale = scale;
+
+    if (this.mapGroup) {
+      this.mapGroup.style.transformOrigin = 'top left';
+      this.mapGroup.style.transform = `scale(${mapScale})`;
+      this.mapGroup.style.top = `${Math.round(10 * mapScale)}px`;
+      this.mapGroup.style.left = `${Math.round(10 * mapScale)}px`;
+    }
+
+    if (this.backpackGroup) {
+      this.backpackGroup.style.transformOrigin = 'bottom left';
+      this.backpackGroup.style.transform = `scale(${scale})`;
+      this.backpackGroup.style.left = `${Math.round(36 * scale)}px`;
+      this.backpackGroup.style.bottom = `${Math.round(80 * scale)}px`;
+    }
+
+    if (this.barsGroup) {
+      this.barsGroup.style.transformOrigin = 'bottom center';
+      this.barsGroup.style.transform = `translateX(-50%) scale(${scale})`;
+      this.barsGroup.style.bottom = `${Math.round(25 * scale)}px`;
+    }
+
+    if (this.settingsButton) {
+      this.settingsButton.style.transformOrigin = 'top right';
+      this.settingsButton.style.transform = `scale(${topRightScale})`;
+      this.settingsButton.style.top = `${Math.round(18 * topRightScale)}px`;
+      this.settingsButton.style.right = `${Math.round(20 * topRightScale)}px`;
+    }
+
+    if (this.saveButton) {
+      this.saveButton.style.transformOrigin = 'top right';
+      this.saveButton.style.transform = `scale(${topRightScale})`;
+      this.saveButton.style.top = `${Math.round(22 * topRightScale)}px`;
+      this.saveButton.style.right = `${Math.round(90 * topRightScale)}px`;
+    }
+
+    if (this.saveStatusLabel) {
+      this.saveStatusLabel.style.transformOrigin = 'top right';
+      this.saveStatusLabel.style.transform = `scale(${topRightScale})`;
+      this.saveStatusLabel.style.top = `${Math.round(58 * topRightScale)}px`;
+      this.saveStatusLabel.style.right = `${Math.round(22 * topRightScale)}px`;
+    }
+
+    if (this.questTrackerPanel) {
+      this.questTrackerPanel.style.transformOrigin = 'top right';
+      this.questTrackerPanel.style.transform = `scale(${questScale})`;
+      this.questTrackerPanel.style.top = `${Math.round(170 * questScale)}px`;
+      this.questTrackerPanel.style.right = `${Math.round(20 * questScale)}px`;
+    }
   }
 
   createInventoryPanel() {
@@ -619,6 +706,7 @@ export class HUDManager {
     tracker.appendChild(list);
 
     document.body.appendChild(tracker);
+    this.questTrackerPanel = tracker;
     this.questTracker = list;
   }
 
@@ -1086,6 +1174,35 @@ export class HUDManager {
     }));
   }
 
+  emitCameraSettingsChanged() {
+    window.dispatchEvent(new CustomEvent('vivarium:camera-invert-changed', {
+      detail: {
+        invertY: this.cameraInvertY === true,
+        invertX: this.cameraInvertX === true
+      }
+    }));
+  }
+
+  setCameraInvertY(enabled, emitEvent = true) {
+    this.cameraInvertY = enabled === true;
+    if (this.settingsInvertCameraToggle) {
+      this.settingsInvertCameraToggle.textContent = this.cameraInvertY ? 'camera y: inverted' : 'camera y: normal';
+    }
+    if (emitEvent) {
+      this.emitCameraSettingsChanged();
+    }
+  }
+
+  setCameraInvertX(enabled, emitEvent = true) {
+    this.cameraInvertX = enabled === true;
+    if (this.settingsInvertCameraXToggle) {
+      this.settingsInvertCameraXToggle.textContent = this.cameraInvertX ? 'camera x: inverted' : 'camera x: normal';
+    }
+    if (emitEvent) {
+      this.emitCameraSettingsChanged();
+    }
+  }
+
   createSettingsPanel() {
     const panel = document.createElement('div');
     panel.id = 'settings-panel';
@@ -1273,6 +1390,80 @@ export class HUDManager {
 
     body.appendChild(controlsRow);
 
+    const gameplayRow = document.createElement('div');
+    gameplayRow.style.cssText = `
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    `;
+
+    const invertCameraBtn = document.createElement('button');
+    invertCameraBtn.type = 'button';
+    invertCameraBtn.style.cssText = `
+      cursor: pointer;
+      border: 3px solid #d2a171;
+      border-radius: 10px;
+      background: #5e341e;
+      color: #fff4d6;
+      min-width: 220px;
+      height: 36px;
+      font-size: 10px;
+      text-transform: uppercase;
+      pointer-events: auto;
+    `;
+    invertCameraBtn.addEventListener('click', () => {
+      this.setCameraInvertY(!this.cameraInvertY);
+    });
+    this.settingsInvertCameraToggle = invertCameraBtn;
+    this.setCameraInvertY(this.cameraInvertY, false);
+    gameplayRow.appendChild(invertCameraBtn);
+
+    const invertCameraXBtn = document.createElement('button');
+    invertCameraXBtn.type = 'button';
+    invertCameraXBtn.style.cssText = `
+      cursor: pointer;
+      border: 3px solid #d2a171;
+      border-radius: 10px;
+      background: #5e341e;
+      color: #fff4d6;
+      min-width: 220px;
+      height: 36px;
+      font-size: 10px;
+      text-transform: uppercase;
+      pointer-events: auto;
+    `;
+    invertCameraXBtn.addEventListener('click', () => {
+      this.setCameraInvertX(!this.cameraInvertX);
+    });
+    this.settingsInvertCameraXToggle = invertCameraXBtn;
+    this.setCameraInvertX(this.cameraInvertX, false);
+    gameplayRow.appendChild(invertCameraXBtn);
+
+    const mainMenuBtn = document.createElement('button');
+    mainMenuBtn.type = 'button';
+    mainMenuBtn.textContent = 'main menu';
+    mainMenuBtn.style.cssText = `
+      cursor: pointer;
+      border: 3px solid #d2a171;
+      border-radius: 10px;
+      background: #5e341e;
+      color: #fff4d6;
+      min-width: 160px;
+      height: 36px;
+      font-size: 10px;
+      text-transform: uppercase;
+      pointer-events: auto;
+    `;
+    mainMenuBtn.addEventListener('click', () => {
+      this.toggleSettingsPanel(false);
+      window.dispatchEvent(new CustomEvent('vivarium:quit-requested'));
+    });
+    gameplayRow.appendChild(mainMenuBtn);
+
+    body.appendChild(gameplayRow);
+
     const onSliderChange = () => {
       this.audioSettings.ambient = Number(ambientSlider.value) / 100;
       this.audioSettings.sfx = Number(sfxSlider.value) / 100;
@@ -1319,6 +1510,8 @@ export class HUDManager {
     return {
       minimapScale: Number(this.minimapScale.toFixed(3)),
       expandedMapScale: Number(this.expandedMapScale.toFixed(3)),
+      invertCameraY: this.cameraInvertY === true,
+      invertCameraX: this.cameraInvertX === true,
       audio: {
         ambient: Number(this.audioSettings.ambient.toFixed(3)),
         sfx: Number(this.audioSettings.sfx.toFixed(3)),
@@ -1337,6 +1530,12 @@ export class HUDManager {
     if (Number.isFinite(settings.expandedMapScale)) {
       this.expandedMapScale = Math.max(this.expandedMapMinScale, Math.min(this.expandedMapMaxScale, settings.expandedMapScale));
       this.updateExpandedMapZoomLabel();
+    }
+    if (typeof settings.invertCameraY === 'boolean') {
+      this.setCameraInvertY(settings.invertCameraY, true);
+    }
+    if (typeof settings.invertCameraX === 'boolean') {
+      this.setCameraInvertX(settings.invertCameraX, true);
     }
 
     const audio = settings.audio;

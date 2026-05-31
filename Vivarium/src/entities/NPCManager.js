@@ -29,11 +29,20 @@ export class NPCManager {
     this.activeNpcKey = 'frog';
 
     this.interactionPrompt = null;
+    this.dialogueGroup = null;
     this.dialogueContainer = null;
     this.frogImage = null;
     this.dialogueText = null;
     this.continuePrompt = null;
     this.choiceContainer = null;
+    this.dialogueScaleReferenceWidth = 1366;
+    this.dialogueScaleReferenceHeight = 768;
+    this.dialogueScale = 1;
+    this.dialogueBaseBottomRange = { min: -420, vhFactor: -0.26, max: -170 };
+    this.dialoguePortraitBottomRange = { min: -50, vhFactor: -0.03, max: -10 };
+    this.dialoguePortraitBaseBottom = 490;
+    this.dialoguePortraitPeekOffsetX = 110;
+    this._onDialogueResize = null;
 
     this.isTyping = false;
     this.typewriterTimer = null;
@@ -207,39 +216,45 @@ export class NPCManager {
   }
 
   createDialogueUI() {
-    const portraitBottomOffset = 'clamp(-50px, -3vh, -10px)';
-    const dialogueBottomOffset = 'clamp(-420px, -26vh, -170px)';
-    const portraitRightInset = 'clamp(10px, 1.5vw, 32px)';
-
     // pixel font
     const fontLink = document.createElement('link');
     fontLink.href = 'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap';
     fontLink.rel = 'stylesheet';
     document.head.appendChild(fontLink);
 
+    this.dialogueGroup = document.createElement('div');
+    this.dialogueGroup.style.position = 'fixed';
+    this.dialogueGroup.style.left = '50%';
+    this.dialogueGroup.style.bottom = '0px';
+    this.dialogueGroup.style.width = '4900px';
+    this.dialogueGroup.style.height = '2000px';
+    this.dialogueGroup.style.transform = 'translateX(-50%)';
+    this.dialogueGroup.style.transformOrigin = 'center bottom';
+    this.dialogueGroup.style.pointerEvents = 'none';
+    this.dialogueGroup.style.display = 'none';
+    this.dialogueGroup.style.zIndex = '2000';
+    document.body.appendChild(this.dialogueGroup);
+
     // frog portrait behind the dialogue box
     this.frogImage = document.createElement('img');
     this.frogImage.src = FROG_CONFIG.ui.frog_portrait;
-    this.frogImage.style.position = 'fixed';
-    // keep it behind the frame and hugged to the right edge of the textbox
-    // (the frame spans almost the full width of the viewport)
-    this.frogImage.style.right = portraitRightInset;
-    this.frogImage.style.bottom = portraitBottomOffset;
-    // nudge left a bit and up so it peeks from behind the frame
-    this.frogImage.style.transform = 'translate(-180px, -320px)';
+    this.frogImage.style.position = 'absolute';
+    // keep portrait peeking from behind the frame on the right side
+    this.frogImage.style.left = '50%';
+    this.frogImage.style.bottom = `${this.dialoguePortraitBaseBottom}px`;
+    this.frogImage.style.transform = `translateX(${this.dialoguePortraitPeekOffsetX}px)`;
     this.frogImage.style.width = '700px';
     this.frogImage.style.height = 'auto';
     this.frogImage.style.imageRendering = 'pixelated';
-    this.frogImage.style.zIndex = '2000';
-    this.frogImage.style.display = 'none';
-    document.body.appendChild(this.frogImage);
+    this.frogImage.style.zIndex = '0';
+    this.frogImage.style.display = 'block';
+    this.dialogueGroup.appendChild(this.frogImage);
 
     // main container using the dialogue frame image
     this.dialogueContainer = document.createElement('div');
-    this.dialogueContainer.style.position = 'fixed';
-    this.dialogueContainer.style.left = '50%';
-    this.dialogueContainer.style.bottom = dialogueBottomOffset;
-    this.dialogueContainer.style.transform = 'translateX(-50%)';
+    this.dialogueContainer.style.position = 'absolute';
+    this.dialogueContainer.style.left = '0';
+    this.dialogueContainer.style.bottom = '0px';
     this.dialogueContainer.style.width = '4900px';
     this.dialogueContainer.style.height = '1260px';
     this.dialogueContainer.style.backgroundImage = `url(${FROG_CONFIG.ui.frame_default})`;
@@ -247,8 +262,8 @@ export class NPCManager {
     this.dialogueContainer.style.backgroundRepeat = 'no-repeat';
     this.dialogueContainer.style.backgroundPosition = 'center';
     this.dialogueContainer.style.imageRendering = 'pixelated';
-    this.dialogueContainer.style.display = 'none';
-    this.dialogueContainer.style.zIndex = '2001';
+    this.dialogueContainer.style.display = 'block';
+    this.dialogueContainer.style.zIndex = '1';
     this.dialogueContainer.style.fontFamily = '"Press Start 2P", monospace';
     this.dialogueContainer.style.pointerEvents = 'none';
 
@@ -297,7 +312,49 @@ export class NPCManager {
     textWrapper.appendChild(this.continuePrompt);
     textWrapper.appendChild(this.choiceContainer);
     this.dialogueContainer.appendChild(textWrapper);
-    document.body.appendChild(this.dialogueContainer);
+    this.dialogueGroup.appendChild(this.dialogueContainer);
+
+    this.applyDialogueResponsiveScale();
+
+    if (!this._onDialogueResize) {
+      this._onDialogueResize = () => this.applyDialogueResponsiveScale();
+      window.addEventListener('resize', this._onDialogueResize, { passive: true });
+    }
+  }
+
+  applyDialogueResponsiveScale() {
+    const refW = Math.max(this.dialogueScaleReferenceWidth || 0, 1);
+    const refH = Math.max(this.dialogueScaleReferenceHeight || 0, 1);
+    const currentW = Math.max(window.innerWidth || 0, 1);
+    const currentH = Math.max(window.innerHeight || 0, 1);
+    const widthScale = currentW / refW;
+    const heightScale = currentH / refH;
+    const nextScale = Math.max(0.42, Math.min(1, Math.min(widthScale, heightScale)));
+    this.dialogueScale = nextScale;
+    const baseBottom = this.computeScaledBottomOffset(this.dialogueBaseBottomRange, currentH, this.dialogueScale);
+    const portraitBottomNudge = this.computeScaledBottomOffset(this.dialoguePortraitBottomRange, currentH, this.dialogueScale);
+
+    if (this.dialogueGroup) {
+      this.dialogueGroup.style.bottom = `${baseBottom}px`;
+      this.dialogueGroup.style.transform = `translateX(-50%) scale(${this.dialogueScale})`;
+    }
+
+    if (this.frogImage) {
+      const smallScreenBias = Math.max(0, Math.min(1, (0.72 - this.dialogueScale) / 0.3));
+      const peekOffsetX = Math.round(this.dialoguePortraitPeekOffsetX - (smallScreenBias * 260));
+      this.frogImage.style.bottom = `${this.dialoguePortraitBaseBottom + portraitBottomNudge}px`;
+      this.frogImage.style.transform = `translateX(${peekOffsetX}px)`;
+    }
+  }
+
+  computeScaledBottomOffset(range, viewportHeight, scale) {
+    if (!range || typeof range !== 'object') return 0;
+    const min = Number.isFinite(range.min) ? range.min : -100;
+    const max = Number.isFinite(range.max) ? range.max : -10;
+    const vhFactor = Number.isFinite(range.vhFactor) ? range.vhFactor : -0.2;
+    const raw = viewportHeight * vhFactor;
+    const clamped = Math.min(max, Math.max(min, raw));
+    return clamped * scale;
   }
 
   loadExclamationMark() {
@@ -724,21 +781,14 @@ export class NPCManager {
       hudBars.style.display = 'none';
     }
 
-    const portraitBottomOffset = 'clamp(-50px, -3vh, -10px)';
-    const dialogueBottomOffset = 'clamp(-420px, -26vh, -170px)';
-
     if (this.interactionPrompt) this.interactionPrompt.style.display = 'none';
-    if (this.frogImage) this.frogImage.style.display = 'block';
+    if (this.dialogueGroup) {
+      this.dialogueGroup.style.display = 'block';
+    }
     if (this.dialogueContainer) {
-      this.dialogueContainer.style.display = 'block';
-      this.dialogueContainer.style.bottom = dialogueBottomOffset;
       this.dialogueContainer.style.pointerEvents = 'auto';
     }
-
-    if (this.frogImage) {
-      this.frogImage.style.bottom = portraitBottomOffset;
-      this.frogImage.style.transform = 'translate(-180px, -220px)';
-    }
+    this.applyDialogueResponsiveScale();
 
     this.showDialogueLine(this.currentDialogueLine);
   }
@@ -859,9 +909,8 @@ export class NPCManager {
       this.resetDialogueProgressForActiveNpc();
     }
 
-    if (this.dialogueContainer) this.dialogueContainer.style.display = 'none';
+    if (this.dialogueGroup) this.dialogueGroup.style.display = 'none';
     if (this.dialogueContainer) this.dialogueContainer.style.pointerEvents = 'none';
-    if (this.frogImage) this.frogImage.style.display = 'none';
     if (this.continuePrompt) this.continuePrompt.style.visibility = 'hidden';
     if (this.dialogueText) this.dialogueText.textContent = '';
   }
