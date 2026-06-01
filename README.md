@@ -10,7 +10,7 @@ scenery and has to solve puzzles.​ Vivarium is inspired by it, but different; 
 
 ---
 
-# Requirements
+# Requirements (F = Functional; NF = Non-Functional)
 
 Requirements, ordered by priority:
 
@@ -31,76 +31,89 @@ F - Functional Requirements, NF - Non-Functional Requirements
 # Project structure
 
 ```text
-Vivarium/
-├─ index.html
-├─ package.json
-├─ public/
-│  └─ resources/
-│     ├─ fox/                    # fox model, animations and VFX
-│     ├─ ground/                 # terrain textures
-│     │  ├─ sky/                 # day/night sky textures
-│     │  └─ trees/               # vegetation models (glb/fbx + textures)
-│     │     ├─ Rita/             # custom trees made by me (Tree_final.glb)
-│     │     ├─ fantasy-x-tree-02/# tree set used as tree variant
-│     │     └─ stylized-bush/    # bush fbx + textures
-│     ├─ bosses/                 # (future) bosses and enemies (1 boss so far)
-│     ├─ quest_givers/           # NPC models
-│     ├─ ui/                     # ui sprites (hud icons, minimap frame, favicon, etc.)
-│     └─ sounds/
-│        ├─ intro/               # menu / intro music
-│        ├─ gameplay/            # exploration music
-│        └─ gameplay/sfx/        # ambience, fox sound, footsteps, etc.
-│
-└─ src/
-   ├─ main.js                    # entry point and main loop; wires all managers and UI flow
-   ├─ style.css                  # base styles so canvas and overlays fill the window
-   │
-   ├─ config/
-   │  └─ gameConfig.js           # camera, scene, terrain, light and player config
-   │
-   ├─ core/
-   │  ├─ GameClock.js            # timekeeping used by the day/night cycle
-   │  ├─ SceneManager.js         # creates three.js scene, camera and renderer
-   │  ├─ LightingManager.js      # directional and ambient lights
-   │  └─ CinematicManager.js     # intro camera/fox cinematic before gameplay
-   │
-   ├─ world/
-   │  ├─ SkyManager.js           # sky dome + day/night sky swapping
-   │  ├─ TerrainManager.js       # wavy terrain with grass texture and height queries
-   │  └─ VegetationManager.js    # trees, bushes, colliders and frustum‑culling registration
-   │
-   ├─ camera/
-   │  └─ CameraController.js     # third‑person camera orbiting around the fox
-   │
-   ├─ entities/
-   │  └─ PlayerManager.js        # fox model, animations, movement, collisions and fox sounds
-   │
-   ├─ input/
-   │  └─ InputManager.js         # keyboard input (WASD, arrows, Shift)
-   │
-   ├─ audio/
-   │  └─ AudioManager.js         # menu music, gameplay music and forest ambience
-   │
-   └─ ui/
-      ├─ CreditsIntroScreen.js   # lil intro
-      ├─ HUDManager.js           # in-game hud (minimap, backpack, bars, settings)
-      ├─ PlayScreen.js           # full‑screen PLAY button before heavy loading
-      ├─ MainMenu.js             # Vivarium main menu (New / Load / Quit + credits)
-      ├─ LoadingScreen.js        # 3D fox loading screen with progress
-      └─ IntroScreen.js          # black overlay used as transition into the cinematic
+ICG-Vivarium/
+├─ README.md                              # project overview, setup, controls, dev log, refs
+├─ LICENSE                                # project license file (MIT)
+└─ Vivarium/                              # main game app folder
+   ├─ index.html                          # HTML entry point used by Vite
+   ├─ package.json                        # scripts and dependencies
+   ├─ package-lock.json                   # exact dependency lockfile
+   ├─ vite.config.js                      # Vite build/dev configuration
+   ├─ public/                             # static assets served as-is
+   │  └─ resources/                       # game resources (models, textures, audio, UI)
+   │     ├─ bosses/                       # arena + Slime + Lilith assets/animations
+   │     ├─ credits/                      # credits text
+   │     ├─ end/                          # ending assets (door)
+   │     ├─ fox/                          # fox model, textures, animations, VFX
+   │     ├─ game_over/                    # game-over images
+   │     ├─ ground/                       # terrain, sky, trees, grass textures/models
+   │     ├─ inventory/                    # item icons for quests/boss drops/key
+   │     ├─ lore/                         # intro/outro videos
+   │     ├─ quest_givers/                 # frog/duck/marker assets
+   │     ├─ sounds/                       # intro, gameplay and SFX audio
+   │     ├─ start/                        # menu/loading/tutorial assets
+   │     └─ ui/                           # UI icons, logo, HUD images
+   └─ src/                                # source code
+      ├─ main.js                          # app bootstrap + game flow wiring
+      ├─ style.css                        # global styles
+      ├─ audio/                           # audio systems
+      │  └─ AudioManager.js               # music/SFX loading, playback and transitions
+      ├─ camera/                          # camera systems
+      │  └─ CameraController.js           # third-person camera follow/rotation logic
+      ├─ config/                          # centralized config values
+      │  └─ gameConfig.js                 # gameplay, world, entities and UI constants
+      ├─ core/                            # core gameplay/services
+      │  ├─ BossCombatSystem.js           # boss-vs-player combat loop and hit logic
+      │  ├─ CinematicManager.js           # intro cinematic orchestration
+      │  ├─ CombatEngine.js               # player attack/cooldown/combat actions
+      │  ├─ GameClock.js                  # time progression (day/night timing)
+      │  ├─ InventoryManager.js           # inventory state and item operations
+      │  ├─ LightingManager.js            # dynamic scene lighting setup/updates
+      │  ├─ QuestManager.js               # quest progression/state transitions
+      │  ├─ SaveManager.js                # save/load/import/export handling
+      │  └─ SceneManager.js               # scene, renderer and shared 3D setup
+      ├─ entities/                        # entity managers
+      │  ├─ BossManager.js                # boss loading, animations and state
+      │  ├─ NPCManager.js                 # NPC spawning, dialogue and interactions
+      │  └─ PlayerManager.js              # player model, movement and animation state
+      ├─ input/                           # input handling
+      │  └─ InputManager.js               # keyboard input state and key events
+      ├─ ui/                              # UI screens and HUD
+      │  ├─ BossUIManager.js              # boss health/combat UI
+      │  ├─ CreditsIntroScreen.js         # intro credits splash
+      │  ├─ CreditsRollScreen.js          # scrolling credits screen
+      │  ├─ EndScreen.js                  # end-of-game final screen
+      │  ├─ GameOverScreen.js             # game-over flow UI
+      │  ├─ HUDManager.js                 # in-game HUD (map, bars, inventory, settings)
+      │  ├─ IntroScreen.js                # pre-cinematic transition overlay
+      │  ├─ LoadingScreen.js              # loading UI with progress
+      │  ├─ LoreVideoPlayer.js            # intro/outro lore video playback
+      │  ├─ MainMenu.js                   # main menu actions/navigation
+      │  ├─ PlayScreen.js                 # play/start screen before game begins
+      │  └─ TutorialOverlay.js            # tutorial overlay modal
+      └─ world/                           # world-building managers
+         ├─ ArenaManager.js               # boss arena spawn/visibility logic
+         ├─ DoorManager.js                # end-door spawn, prompt and unlock logic
+         ├─ SkyManager.js                 # skybox/day-night visual switching
+         ├─ TerrainManager.js             # terrain mesh and height queries
+         └─ VegetationManager.js          # tree/bush placement and vegetation helpers
 ```
 
 ---
 
 # How to run
 
-Github pages:
+Live Version - Github pages:
 
 https://anasantos05.github.io/ICG-Vivarium/
 
+Local Run:
 Or, clone repo and:
 
 ```bash
+# make sure you are in the right folder
+cd Vivarium
+
 # install dependencies
 npm install
 
@@ -128,6 +141,10 @@ Then open the URL shown in the terminal (usually `http://localhost:5173`).
 - **Attack**
   - `Q` - tail attack
   - `R` - paw attack
+- **Interaction**
+  - `T`- interact with NPC dialogue
+  - `E`- open/close inventory (and interact w/ door when prompted)
+  - `M`- open/close minimap panel
 
 ## Performance / optimizations
 
@@ -136,6 +153,9 @@ Then open the URL shown in the terminal (usually `http://localhost:5173`).
 - This keeps the scene lighter while moving around the world.
 
 ---
+
+## Demo Video (YouTube):
+https://youtu.be/2FGDvhb1EgY
 
 ## Development log (summary)
 
@@ -343,3 +363,80 @@ Short video of the state of the game:
 https://github.com/user-attachments/assets/4f35019a-4ef1-4f60-a3bc-000bf61b36ec
 
 ---
+
+### From 13 April to 1 of June:
+Since that I had more projects and tests during that season, it was hard for me to update this log weekly. During it, I made a boss - Lilith; Made another tree; Built the story; Drew and animated the intro/outro 2D animation of the game; Made the combat more difficult; Gave it an ending; Fixed bugs that people who played the game found out; Added more settings; Added a save feature; And made it responsive.
+
+## Highlights from that period of development:
+
+Me creating the other tree:
+<img width="1919" height="930" alt="Screenshot from 2026-05-14 01-14-37" src="https://github.com/user-attachments/assets/506f4e52-742f-4a88-87f0-47abb25591aa" />
+<img width="1892" height="1014" alt="Screenshot from 2026-05-14 23-20-11" src="https://github.com/user-attachments/assets/5ce350d8-a8e0-4d4d-b17e-fcdc37ea08ac" />
+
+Me creating Lilith:
+<img width="1912" height="1055" alt="Screenshot from 2026-05-20 16-07-40" src="https://github.com/user-attachments/assets/5ed61efc-606b-46fb-b83b-2925a81f90b8" />
+<img width="1912" height="1055" alt="Screenshot from 2026-05-21 10-57-11" src="https://github.com/user-attachments/assets/489a81de-9d8e-41ed-88fa-ae3914cc1f22" />
+<img width="1912" height="1055" alt="Screenshot from 2026-05-21 11-33-44" src="https://github.com/user-attachments/assets/22a085a6-86bd-4cac-9e63-aedb366f5230" />
+
+Responsiveness: the game is more adapted for different types of screens
+<img width="532" height="874" alt="Screenshot from 2026-05-31 17-09-59" src="https://github.com/user-attachments/assets/81dcd52c-c62d-4778-8802-fa3b3bbc1eec" />
+
+⚠️ Although the game is more responsive, you still need keyboard (and mouse if you want) to play the game, since it's still future work to actually make it full mobile compatible.
+
+Video of the state of the game is in the demo
+
+---
+
+## Future Work:
+- Mobile adaptation.
+- More cartoony UI.
+- More character diversity.
+- Better combat engine.
+- More SFX.
+- Better story development.
+- Better accessibility features.
+
+---
+
+## References
+- SimonDev, "I Tried Making a 3D RPG Game in JavaScript," YouTube video, 2020.  
+  https://www.youtube.com/watch?v=SBfZAVzbhCg&t=346s
+- RoBuilder, "ABSOLUTE Beginner Basics.. Blender For Noobs 2025," YouTube video, 2025.  
+  http://www.youtube.com/watch?v=peSv5IT5Ve4
+- BlenderVitals, "Create a Low Poly Tree in Blender in 1 Minute!," YouTube video, 2023.  
+  http://www.youtube.com/watch?v=hvxoAX_pol0
+- Eve Sculpts, "Blender Tutorial - 2D Drawing to 3D Model (Part 1)," YouTube video, 2021.  
+  http://www.youtube.com/watch?v=AlPPYkZg9D4
+  ... (many other videos)
+- Class materials.
+
+## Conclusion
+- I met all my initial requirements.
+- I feel like I was able to learn a lot of things and apply what I learned in class by making this project.
+- Also, I am really happy that I was able to improve my 3D modelling skills and explore Blender through this project.
+- I've always wanted to make a video game and this was a great start to it. Which leads to this: onward to my next game, 'Seaphoria'! - https://duosky.itch.io/seaphoria
+
+## AI Acknowledgment
+
+- I used GitHub Copilot to clean up unused/redundant code that came from earlier experimentation during development and make it more readable and simple.
+- When I found implementation roadblocks (for example, building the arena on a wavy terrain), I used Copilot to explore possible solutions and then adapted what I understood.
+- I used Gemini to debug Blender-related issues, such as locating tools and troubleshooting texture-loading problems.
+
+ ⚠️ **Important**:
+I see AI merely as a tool and it should not be used for making projects from scratch to finished, nor it was used here with that intention.
+I also don't support AI art, so obviously I didn't use AI to generate 3D models. I either did them myself, by watching youtube videos or by using Sketchfab's models.
+Same goes to the images and music, none was AI generated by me and I hope it was human made, because not all of them had AI flags, unfortunately, so I couldn't check them all.
+
+## Credits and thanks
+Besides the code, I made these 3D models on Blender: 2 trees in my game, a duck(NPC) and Lilith (the main Boss), as well as the drawings of the characters, logos and 2D animations.
+Any other credits are in `Vivarium/Public/resources/credits/credits.txt`
+
+ ⚠️ I will update that credit file if I found out that I missed some. If you see your content being used here without proper credits, contact me, I could have forgotten one or two by mistake and I sincerely apologize for that.
+
+ I have to thank the course's teacher for the feedback and support.
+ Also, thank you everyone who played this game and somehow contributed to it <3
+ 
+ PS: Obrigada Pedro por me partires o jogo, deste spot a bons bugs ahahah (e o resto da malta que também me partiu o jogo xD)
+
+ ## Feedback
+ If you play this game and have any feedback/improvement or find any glitch/bug, let me know, contact me! <3
