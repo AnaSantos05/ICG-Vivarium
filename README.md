@@ -101,6 +101,11 @@ ICG-Vivarium/
 
 ---
 
+# Scene Graph
+<img width="1519" height="500" alt="SceneGraph" src="https://github.com/user-attachments/assets/00d1f4e0-f4c9-41ec-91ad-57e9bac71607" />
+
+---
+
 # How to run
 
 Live Version - Github pages:
@@ -122,6 +127,8 @@ npm run dev
 ```
 
 Then open the URL shown in the terminal (usually `http://localhost:5173`).
+
+**Three.js version: 0.118.1**
 
 ---
 
