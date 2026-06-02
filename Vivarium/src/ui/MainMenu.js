@@ -158,7 +158,7 @@ export class MainMenu {
     });
 
     const versionText = document.createElement('span');
-    versionText.textContent = 'Viv.BETA 1.0 2026';
+    versionText.textContent = 'Vivarium PUBLIC RELEASE 1.01';
     versionText.style.cssText = `
       font-family: 'Press Start 2P', monospace;
       font-size: 12px;

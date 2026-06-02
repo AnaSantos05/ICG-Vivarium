@@ -44,10 +44,10 @@ export class QuestManager {
     const rawTalkedToDuckForKey = state.talkedToDuckForKey === true;
     const rawKeyGranted = state.keyGranted === true;
 
-    // reconcile older or inconsistent saves:
-    // progress counters are authoritative, flags must not jump ahead.
+    // Keep counters authoritative, but do not fast-forward hand-ins from weak signals.
+    // Example: talking to the duck early should not count as turning in the frog quest.
     const talkedToFrog = rawTalkedToFrog || lilithDefeats > 0 || rawSlimeTurnedIn || rawTalkedToDuck || orbDefeats > 0 || rawTalkedToDuckForKey || rawKeyGranted;
-    const slimeTurnedIn = (rawSlimeTurnedIn || rawTalkedToDuck || orbDefeats > 0 || rawTalkedToDuckForKey || rawKeyGranted)
+    const slimeTurnedIn = (rawSlimeTurnedIn || orbDefeats > 0 || rawTalkedToDuckForKey || rawKeyGranted)
       && lilithDefeats >= 3
       && talkedToFrog;
     const talkedToDuck = rawTalkedToDuck || orbDefeats > 0 || rawTalkedToDuckForKey || rawKeyGranted;

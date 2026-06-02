@@ -33,6 +33,8 @@ import { EndScreen } from './ui/EndScreen.js';
 import { CreditsRollScreen } from './ui/CreditsRollScreen.js';
 import { BossCombatSystem } from './core/BossCombatSystem.js';
 
+console.log(THREE.REVISION);
+
 // set body background
 document.body.style.backgroundColor = '#000000';
 document.body.style.margin = '0';
@@ -683,6 +685,61 @@ function devQuickStart() {
 }
 
 function wireMainMenuActions() {
+  const unlockMenuActions = () => {
+    if (mainMenu && typeof mainMenu.unlockActions === 'function') {
+      mainMenu.unlockActions();
+    }
+  };
+
+  const importSnapshotFromDevice = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+
+    input.addEventListener('change', async () => {
+      const file = input.files && input.files[0] ? input.files[0] : null;
+      input.remove();
+      if (!file) {
+        unlockMenuActions();
+        return;
+      }
+
+      try {
+        const text = await file.text();
+        const snapshot = saveManager.importSnapshotFromJsonText(text);
+        if (!snapshot) {
+          alert('failed to import save.');
+          unlockMenuActions();
+          return;
+        }
+
+        audioManager.stopMenuMusic();
+        mainMenu.hide(() => {
+          startCoreGame({ loadedSnapshot: snapshot });
+        });
+      } catch (error) {
+        console.warn('failed to import save', error);
+        alert('failed to import save.');
+        unlockMenuActions();
+      }
+    });
+
+    const onFocus = () => {
+      // If the picker closes without a file, unlock the menu button.
+      setTimeout(() => {
+        if (document.body.contains(input) && (!input.files || !input.files.length)) {
+          input.remove();
+          unlockMenuActions();
+        }
+      }, 0);
+    };
+    window.addEventListener('focus', onFocus, { once: true });
+    input.click();
+    return true;
+  };
+
   mainMenu.onNewGame = () => {
     audioManager.stopMenuMusic();
     if (dev_skip_flow) {
@@ -697,8 +754,11 @@ function wireMainMenuActions() {
   mainMenu.onLoadGame = () => {
     const latestSave = saveManager.getLatestLocalSave();
     if (!latestSave) {
-      alert('nao foi encontrado nenhum save local.');
-      return false;
+      const shouldImport = confirm('No local save found. Would you like to import a JSON save from your device?');
+      if (!shouldImport) {
+        return false;
+      }
+      return importSnapshotFromDevice();
     }
 
     const shouldLoad = confirm('A local save was detected. Would you like to load it?');
@@ -708,55 +768,7 @@ function wireMainMenuActions() {
         return false;
       }
 
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.json,application/json';
-      input.style.display = 'none';
-      document.body.appendChild(input);
-      const unlockMenu = () => {
-        if (mainMenu && typeof mainMenu.unlockActions === 'function') {
-          mainMenu.unlockActions();
-        }
-      };
-      input.addEventListener('change', async () => {
-        const file = input.files && input.files[0] ? input.files[0] : null;
-        input.remove();
-        if (!file) {
-          unlockMenu();
-          return;
-        }
-
-        try {
-          const text = await file.text();
-          const snapshot = saveManager.importSnapshotFromJsonText(text);
-          if (!snapshot) {
-            alert('failed to import save.');
-            unlockMenu();
-            return;
-          }
-
-          audioManager.stopMenuMusic();
-          mainMenu.hide(() => {
-            startCoreGame({ loadedSnapshot: snapshot });
-          });
-        } catch (error) {
-          console.warn('failed to import save', error);
-          alert('failed to import save.');
-          unlockMenu();
-        }
-      });
-
-      const onFocus = () => {
-        setTimeout(() => {
-          if (document.body.contains(input) && (!input.files || !input.files.length)) {
-            input.remove();
-            unlockMenu();
-          }
-        }, 0);
-      };
-      window.addEventListener('focus', onFocus, { once: true });
-      input.click();
-      return true;
+      return importSnapshotFromDevice();
     }
 
     audioManager.stopMenuMusic();

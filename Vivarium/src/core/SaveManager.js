@@ -58,6 +58,8 @@ export class SaveManager {
   }
 
   buildSnapshot({ inventoryItems = [], npcDialogueHistory = [], settings = {}, lastMapPoint = null, questState = null } = {}) {
+    const normalizedQuestState = this.normalizeQuestState(questState);
+
     return {
       meta: {
         version: 1,
@@ -78,7 +80,7 @@ export class SaveManager {
       npcDialogueHistory: Array.isArray(npcDialogueHistory)
         ? npcDialogueHistory.map((entry) => ({ ...entry }))
         : [],
-      quest: questState && typeof questState === 'object' ? { ...questState } : null,
+      quest: normalizedQuestState,
       settings: settings && typeof settings === 'object' ? { ...settings } : {},
       lastMapPoint: lastMapPoint && typeof lastMapPoint === 'object' ? { ...lastMapPoint } : null
     };
@@ -129,7 +131,7 @@ export class SaveManager {
       if (!parsed || typeof parsed !== 'object') return null;
 
       if (parsed.meta && parsed.progress) {
-        return parsed;
+        return this.normalizeParsedSnapshot(parsed);
       }
 
       const payload = typeof parsed.payload === 'string' ? parsed.payload : null;
@@ -142,10 +144,45 @@ export class SaveManager {
       if (!snapshot || typeof snapshot !== 'object') return null;
       if (!snapshot.meta || !snapshot.progress) return null;
 
-      return snapshot;
+      return this.normalizeParsedSnapshot(snapshot);
     } catch {
       return null;
     }
+  }
+
+  normalizeParsedSnapshot(snapshot) {
+    if (!snapshot || typeof snapshot !== 'object') return null;
+
+    const normalized = { ...snapshot };
+    const questCandidate = normalized.quest || normalized.quests || normalized.questState || null;
+    normalized.quest = this.normalizeQuestState(questCandidate);
+
+    return normalized;
+  }
+
+  normalizeQuestState(questState) {
+    if (!questState || typeof questState !== 'object') return null;
+
+    const clampCounter = (value) => {
+      if (!Number.isFinite(value)) return 0;
+      return Math.max(0, Math.min(3, Math.floor(value)));
+    };
+    const toBool = (value) => value === true;
+    const lilithDefeats = Number.isFinite(questState.lilithDefeats)
+      ? questState.lilithDefeats
+      : questState.bunnyDefeats;
+
+    return {
+      // Keep the legacy alias so older builds can still read imports from this build.
+      bunnyDefeats: clampCounter(lilithDefeats),
+      lilithDefeats: clampCounter(lilithDefeats),
+      orbDefeats: clampCounter(questState.orbDefeats),
+      keyGranted: toBool(questState.keyGranted),
+      talkedToFrog: toBool(questState.talkedToFrog),
+      slimeTurnedIn: toBool(questState.slimeTurnedIn),
+      talkedToDuck: toBool(questState.talkedToDuck),
+      talkedToDuckForKey: toBool(questState.talkedToDuckForKey)
+    };
   }
 
   buildEncryptedSnapshotText(snapshot) {
